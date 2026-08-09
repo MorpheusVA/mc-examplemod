@@ -81,27 +81,7 @@ public class DynamicLiquidBlock extends LiquidBlock {
             String neighborFluidStr = neighborFluidId.toString();
             boolean neighborIsSource = neighborFluidState.isSource();
 
-            boolean isTouches;
-            if (dir == net.minecraft.core.Direction.DOWN) {
-                isTouches = true;
-            } else if (dir == net.minecraft.core.Direction.UP) {
-                isTouches = false;
-            } else {
-                if (neighborIsSource && !thisIsSource) {
-                    isTouches = true;
-                } else if (thisIsSource && !neighborIsSource) {
-                    isTouches = false;
-                } else {
-                    int thisAmount = state.getFluidState().getAmount();
-                    int neighborAmount = neighborFluidState.getAmount();
-                    isTouches = thisAmount >= neighborAmount;
-                }
-            }
-
-            java.util.List<FluidDefinition.InteractionConfig> rules = new java.util.ArrayList<>(definition.interactions);
-            rules.sort((r1, r2) -> Integer.compare(getRulePriority(r2), getRulePriority(r1)));
-
-            for (FluidDefinition.InteractionConfig rule : rules) {
+            for (FluidDefinition.InteractionConfig rule : definition.interactions) {
                 if (rule.fluid == null || rule.fluid.isBlank()) continue;
 
                 if (!matchesFluid(neighborFluidStr, rule.fluid)) continue;
@@ -112,18 +92,15 @@ public class DynamicLiquidBlock extends LiquidBlock {
                 if ("source".equalsIgnoreCase(rule.target_state) && !neighborIsSource) continue;
                 if ("flowing".equalsIgnoreCase(rule.target_state) && neighborIsSource) continue;
 
-                String when = rule.when != null ? rule.when.toLowerCase() : "hit_by";
-                boolean ruleIsTouches = "touches".equals(when) || "on_touching".equals(when);
-                boolean ruleIsHitBy = "hit_by".equals(when) || "on_hit_by".equals(when);
+                // Match found! Determine target position to place the result block
+                BlockPos replacePos = pos; // Default to replacing this fluid block
+                if ("target".equalsIgnoreCase(rule.replace) || "neighbor".equalsIgnoreCase(rule.replace)) {
+                    replacePos = neighborPos;
+                }
 
-                if (ruleIsTouches && !isTouches) continue;
-                if (ruleIsHitBy && isTouches) continue;
-
-                BlockPos targetReplacePos = ruleIsTouches ? neighborPos : pos;
                 BlockState resultState = getResultBlockState(rule.result);
-
-                level.setBlock(targetReplacePos, resultState, 3);
-                level.levelEvent(1501, targetReplacePos, 0); // Extinguish sound & particles
+                level.setBlock(replacePos, resultState, 3);
+                level.levelEvent(1501, replacePos, 0); // Sound & fizz particles
                 return true;
             }
         }
