@@ -209,6 +209,20 @@ public class ContentManager {
                     if (in != null) Files.copy(in, defaultBlockTexture, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
+
+            Path defaultAcidStillTexture = texturesFluidDir.resolve("acid_still.png");
+            if (!Files.exists(defaultAcidStillTexture)) {
+                try (InputStream in = ExampleMod.class.getResourceAsStream("/assets/examplemod/textures/fluid/acid_still.png")) {
+                    if (in != null) Files.copy(in, defaultAcidStillTexture, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+
+            Path defaultAcidFlowTexture = texturesFluidDir.resolve("acid_flow.png");
+            if (!Files.exists(defaultAcidFlowTexture)) {
+                try (InputStream in = ExampleMod.class.getResourceAsStream("/assets/examplemod/textures/fluid/acid_flow.png")) {
+                    if (in != null) Files.copy(in, defaultAcidFlowTexture, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
         } catch (Exception e) {
             LOGGER.warn("[ExampleMod] Could not create default examples", e);
         }
