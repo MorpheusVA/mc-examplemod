@@ -1,0 +1,8 @@
+{
+  "itemGroup.examplemod": "Example Mod Tab",
+  "block.examplemod.example_block": "Example Block",
+  "item.examplemod.example_item": "Example Item",
+  "jei.examplemod.example_item.description": "An enchanted crystal item crafted from pure essence. Restores hunger and saturation quickly.",
+  "jei.examplemod.example_block.description": "A sturdy runic stone block infused with cyan energy.",
+  "jade.examplemod.example_block.info": "⚡ Infused with Cyan Energy"
+}
