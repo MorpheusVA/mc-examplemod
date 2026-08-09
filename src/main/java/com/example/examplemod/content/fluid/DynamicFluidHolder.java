@@ -65,6 +65,16 @@ public class DynamicFluidHolder {
         return definition;
     }
 
+    public void updateDefinition(FluidDefinition newDef) {
+        if (newDef == null) return;
+        if (this.fluidType != null) {
+            this.fluidType.updateDefinition(newDef);
+        }
+        if (this.block != null) {
+            this.block.updateDefinition(newDef);
+        }
+    }
+
     public DynamicFluidType getFluidType() {
         return getOrCreateFluidType();
     }

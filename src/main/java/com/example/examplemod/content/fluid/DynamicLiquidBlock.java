@@ -39,6 +39,15 @@ public class DynamicLiquidBlock extends LiquidBlock {
         return definition;
     }
 
+    public void updateDefinition(FluidDefinition newDef) {
+        if (newDef != null) {
+            this.definition.rendering = newDef.rendering;
+            this.definition.physics = newDef.physics;
+            this.definition.behaviors = newDef.behaviors;
+            this.definition.interactions = newDef.interactions;
+        }
+    }
+
     @Override
     protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean isMoving) {
         if (!checkFluidInteractions(level, pos, state)) {

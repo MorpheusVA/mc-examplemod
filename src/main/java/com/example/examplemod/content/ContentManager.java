@@ -951,4 +951,53 @@ public class ContentManager {
                   .add(elementId);
         } catch (Exception ignored) {}
     }
+
+    public String getItemDefinitionsJson() {
+        return GSON.toJson(this.itemDefinitions);
+    }
+
+    public String getBlockDefinitionsJson() {
+        return GSON.toJson(this.blockDefinitions);
+    }
+
+    public String getFluidDefinitionsJson() {
+        return GSON.toJson(this.fluidDefinitions);
+    }
+
+    public void applyServerSyncedConfig(String itemsJson, String blocksJson, String fluidsJson) {
+        try {
+            LOGGER.info("[ExampleMod] Applying server-synced configuration payload...");
+
+            java.lang.reflect.Type itemType = new com.google.gson.reflect.TypeToken<Map<String, ItemDefinition>>(){}.getType();
+            java.lang.reflect.Type blockType = new com.google.gson.reflect.TypeToken<Map<String, BlockDefinition>>(){}.getType();
+            java.lang.reflect.Type fluidType = new com.google.gson.reflect.TypeToken<Map<String, FluidDefinition>>(){}.getType();
+
+            Map<String, ItemDefinition> syncedItems = GSON.fromJson(itemsJson, itemType);
+            Map<String, BlockDefinition> syncedBlocks = GSON.fromJson(blocksJson, blockType);
+            Map<String, FluidDefinition> syncedFluids = GSON.fromJson(fluidsJson, fluidType);
+
+            if (syncedItems != null) {
+                this.itemDefinitions.putAll(syncedItems);
+            }
+            if (syncedBlocks != null) {
+                this.blockDefinitions.putAll(syncedBlocks);
+            }
+            if (syncedFluids != null) {
+                this.fluidDefinitions.putAll(syncedFluids);
+                for (Map.Entry<String, FluidDefinition> entry : syncedFluids.entrySet()) {
+                    DynamicFluidHolder holder = dynamicFluids.get(entry.getKey());
+                    if (holder != null) {
+                        holder.updateDefinition(entry.getValue());
+                    }
+                }
+            }
+
+            LOGGER.info("[ExampleMod] Successfully applied server-synced configuration! ({} items, {} blocks, {} fluids)",
+                    syncedItems != null ? syncedItems.size() : 0,
+                    syncedBlocks != null ? syncedBlocks.size() : 0,
+                    syncedFluids != null ? syncedFluids.size() : 0);
+        } catch (Exception e) {
+            LOGGER.error("[ExampleMod] Error applying server-synced configuration payload", e);
+        }
+    }
 }

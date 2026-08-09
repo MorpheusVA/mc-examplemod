@@ -28,6 +28,15 @@ public class DynamicFluidType extends FluidType {
         return definition;
     }
 
+    public void updateDefinition(FluidDefinition newDef) {
+        if (newDef != null) {
+            this.definition.rendering = newDef.rendering;
+            this.definition.physics = newDef.physics;
+            this.definition.behaviors = newDef.behaviors;
+            this.definition.interactions = newDef.interactions;
+        }
+    }
+
     public ResourceLocation getStillTexture() {
         return stillTexture;
     }
