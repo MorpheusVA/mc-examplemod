@@ -69,6 +69,9 @@ public class DynamicLiquidBlock extends LiquidBlock {
 
         boolean thisIsSource = state.getFluidState().isSource();
 
+        java.util.List<FluidDefinition.InteractionConfig> rules = new java.util.ArrayList<>(definition.interactions);
+        rules.sort((r1, r2) -> Integer.compare(getRulePriority(r2), getRulePriority(r1)));
+
         for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
             BlockPos neighborPos = pos.relative(dir);
             net.minecraft.world.level.material.FluidState neighborFluidState = level.getFluidState(neighborPos);
@@ -81,7 +84,7 @@ public class DynamicLiquidBlock extends LiquidBlock {
             String neighborFluidStr = neighborFluidId.toString();
             boolean neighborIsSource = neighborFluidState.isSource();
 
-            for (FluidDefinition.InteractionConfig rule : definition.interactions) {
+            for (FluidDefinition.InteractionConfig rule : rules) {
                 if (rule.fluid == null || rule.fluid.isBlank()) continue;
 
                 if (!matchesFluid(neighborFluidStr, rule.fluid)) continue;
@@ -116,6 +119,7 @@ public class DynamicLiquidBlock extends LiquidBlock {
         int score = 0;
         if (rule.this_state != null && !"any".equalsIgnoreCase(rule.this_state)) score += 2;
         if (rule.target_state != null && !"any".equalsIgnoreCase(rule.target_state)) score += 2;
+        if (rule.direction != null && !"any".equalsIgnoreCase(rule.direction)) score += 3;
         if (rule.when != null && !"any".equalsIgnoreCase(rule.when)) score += 1;
         return score;
     }
