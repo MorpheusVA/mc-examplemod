@@ -22,6 +22,7 @@ import com.example.examplemod.ExampleMod;
 import com.example.examplemod.content.data.BlockDefinition;
 import com.example.examplemod.content.data.FluidDefinition;
 import com.example.examplemod.content.data.ItemDefinition;
+import com.example.examplemod.content.data.LocalizedText;
 import com.example.examplemod.content.fluid.DynamicFluidHolder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
