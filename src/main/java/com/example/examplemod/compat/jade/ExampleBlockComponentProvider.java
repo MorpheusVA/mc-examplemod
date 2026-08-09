@@ -19,9 +19,8 @@ public enum ExampleBlockComponentProvider implements IBlockComponentProvider {
     @Override
     public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
         if (accessor.getBlock() instanceof DynamicBlock dynamicBlock) {
-            String wailaInfo = dynamicBlock.getDefinition().waila_info;
-            if (wailaInfo != null && !wailaInfo.isBlank()) {
-                tooltip.add(Component.literal(wailaInfo).withStyle(ChatFormatting.AQUA));
+            if (dynamicBlock.getDefinition().waila_info != null && !dynamicBlock.getDefinition().waila_info.isBlank()) {
+                tooltip.add(Component.translatable("jade." + ExampleMod.MODID + "." + dynamicBlock.getDefinition().id + ".info").withStyle(ChatFormatting.AQUA));
             }
         }
     }

@@ -4,8 +4,8 @@ import java.util.List;
 
 public class ItemDefinition {
     public String id;
-    public String name;
-    public String description;
+    public LocalizedText name;
+    public LocalizedText description;
     public String type = "basic"; // "basic", "food"
     public int max_stack_size = 64;
     public String rarity = "common"; // "common", "uncommon", "rare", "epic"

@@ -101,8 +101,14 @@ public class ContentManager {
             if (!Files.exists(defaultItemJson)) {
                 ItemDefinition itemDef = new ItemDefinition();
                 itemDef.id = "example_item";
-                itemDef.name = "Example Item";
-                itemDef.description = "An enchanted crystal item loaded dynamically from external config. Restores hunger quickly.";
+                itemDef.name = new LocalizedText();
+                itemDef.name.put("en_us", "Example Item");
+                itemDef.name.put("pt_br", "Item de Exemplo");
+
+                itemDef.description = new LocalizedText();
+                itemDef.description.put("en_us", "An enchanted crystal item loaded dynamically from external config. Restores hunger quickly.");
+                itemDef.description.put("pt_br", "Um item de cristal encantado carregado dinamicamente via configuração externa. Restaura a fome rapidamente.");
+
                 itemDef.type = "food";
                 itemDef.max_stack_size = 64;
                 itemDef.rarity = "rare";
@@ -120,14 +126,24 @@ public class ContentManager {
             if (!Files.exists(defaultBlockJson)) {
                 BlockDefinition blockDef = new BlockDefinition();
                 blockDef.id = "example_block";
-                blockDef.name = "Example Block";
-                blockDef.description = "A sturdy runic stone block loaded dynamically from external config.";
+                blockDef.name = new LocalizedText();
+                blockDef.name.put("en_us", "Example Block");
+                blockDef.name.put("pt_br", "Bloco de Exemplo");
+
+                blockDef.description = new LocalizedText();
+                blockDef.description.put("en_us", "A sturdy runic stone block loaded dynamically from external config.");
+                blockDef.description.put("pt_br", "Um bloco de pedra rúnica resistente carregado dinamicamente via configuração externa.");
+
                 blockDef.destroy_time = 1.5f;
                 blockDef.explosion_resistance = 6.0f;
                 blockDef.light_emission = 5;
                 blockDef.sound_type = "stone";
                 blockDef.map_color = "color_cyan";
-                blockDef.waila_info = "⚡ Infused with Cyan Energy (External Config)";
+
+                blockDef.waila_info = new LocalizedText();
+                blockDef.waila_info.put("en_us", "⚡ Infused with Cyan Energy (External Config)");
+                blockDef.waila_info.put("pt_br", "⚡ Infundido com Energia Ciano (Config Externa)");
+
                 blockDef.has_item = true;
 
                 try (Writer writer = Files.newBufferedWriter(defaultBlockJson, StandardCharsets.UTF_8)) {
@@ -139,8 +155,14 @@ public class ContentManager {
             if (!Files.exists(defaultFluidJson)) {
                 FluidDefinition fluidDef = new FluidDefinition();
                 fluidDef.id = "acid";
-                fluidDef.name = "Ácido Corrosivo";
-                fluidDef.description = "Um líquido verde e borbulhante altamente corrosivo. Provoca envenenamento e cegueira em contato.";
+                fluidDef.name = new LocalizedText();
+                fluidDef.name.put("en_us", "Corrosive Acid");
+                fluidDef.name.put("pt_br", "Ácido Corrosivo");
+
+                fluidDef.description = new LocalizedText();
+                fluidDef.description.put("en_us", "A highly corrosive bubbling green liquid. Causes poison and blindness on contact.");
+                fluidDef.description.put("pt_br", "Um líquido verde e borbulhante altamente corrosivo. Provoca envenenamento e cegueira em contato.");
+
                 fluidDef.rendering.tint_color = "#E040FF40"; // Translucent green
                 fluidDef.rendering.is_translucent = true;
                 fluidDef.rendering.luminosity = 6;
@@ -279,9 +301,14 @@ public class ContentManager {
             processTextureDirectory(texturesBlockDir, texturesPackBlockDir);
             processTextureDirectory(texturesFluidDir, texturesPackBlockDir);
 
-            JsonObject langJson = new JsonObject();
-            langJson.addProperty("itemGroup.examplemod", "Example Mod Tab");
-            langJson.addProperty("config.jade.plugin_examplemod.dynamic_block_provider", "Dynamic Block Info");
+            List<String> langs = List.of("en_us", "pt_br");
+            Map<String, JsonObject> langJsonMap = new HashMap<>();
+            for (String lang : langs) {
+                JsonObject lJson = new JsonObject();
+                lJson.addProperty("itemGroup.examplemod", "en_us".equals(lang) ? "Example Mod Tab" : "Aba do Example Mod");
+                lJson.addProperty("config.jade.plugin_examplemod.dynamic_block_provider", "en_us".equals(lang) ? "Dynamic Block Info" : "Info do Bloco Dinâmico");
+                langJsonMap.put(lang, lJson);
+            }
 
             // 2. Generate item models and lang
             for (ItemDefinition itemDef : itemDefinitions.values()) {
@@ -293,9 +320,13 @@ public class ContentManager {
 
                 Files.writeString(modelsItemDir.resolve(itemDef.id + ".json"), GSON.toJson(itemModel), StandardCharsets.UTF_8);
 
-                langJson.addProperty("item." + ExampleMod.MODID + "." + itemDef.id, itemDef.name != null ? itemDef.name : itemDef.id);
-                if (itemDef.description != null) {
-                    langJson.addProperty("jei." + ExampleMod.MODID + "." + itemDef.id + ".description", itemDef.description);
+                for (String lang : langs) {
+                    JsonObject lJson = langJsonMap.get(lang);
+                    String name = itemDef.name != null ? itemDef.name.get(lang) : itemDef.id;
+                    lJson.addProperty("item." + ExampleMod.MODID + "." + itemDef.id, name);
+                    if (itemDef.description != null) {
+                        lJson.addProperty("jei." + ExampleMod.MODID + "." + itemDef.id + ".description", itemDef.description.get(lang));
+                    }
                 }
             }
 
@@ -476,12 +507,16 @@ public class ContentManager {
                     Files.writeString(modelsItemDir.resolve(blockDef.id + ".json"), GSON.toJson(blockItemModel), StandardCharsets.UTF_8);
                 }
 
-                langJson.addProperty("block." + ExampleMod.MODID + "." + blockDef.id, blockDef.name != null ? blockDef.name : blockDef.id);
-                if (blockDef.description != null) {
-                    langJson.addProperty("jei." + ExampleMod.MODID + "." + blockDef.id + ".description", blockDef.description);
-                }
-                if (blockDef.waila_info != null) {
-                    langJson.addProperty("jade." + ExampleMod.MODID + "." + blockDef.id + ".info", blockDef.waila_info);
+                for (String lang : langs) {
+                    JsonObject lJson = langJsonMap.get(lang);
+                    String name = blockDef.name != null ? blockDef.name.get(lang) : blockDef.id;
+                    lJson.addProperty("block." + ExampleMod.MODID + "." + blockDef.id, name);
+                    if (blockDef.description != null) {
+                        lJson.addProperty("jei." + ExampleMod.MODID + "." + blockDef.id + ".description", blockDef.description.get(lang));
+                    }
+                    if (blockDef.waila_info != null) {
+                        lJson.addProperty("jade." + ExampleMod.MODID + "." + blockDef.id + ".info", blockDef.waila_info.get(lang));
+                    }
                 }
             }
 
@@ -503,14 +538,23 @@ public class ContentManager {
 
                     Files.writeString(modelsItemDir.resolve(fluidDef.id + "_bucket.json"), GSON.toJson(bucketModel), StandardCharsets.UTF_8);
 
-                    langJson.addProperty("item." + ExampleMod.MODID + "." + fluidDef.id + "_bucket", fluidDef.name != null ? "Balde de " + fluidDef.name : "Balde de " + fluidDef.id);
-                    if (fluidDef.description != null) {
-                        langJson.addProperty("jei." + ExampleMod.MODID + "." + fluidDef.id + "_bucket.description", fluidDef.description);
+                    for (String lang : langs) {
+                        JsonObject lJson = langJsonMap.get(lang);
+                        String fluidName = fluidDef.name != null ? fluidDef.name.get(lang) : fluidDef.id;
+                        String bucketPrefix = "pt_br".equalsIgnoreCase(lang) ? "Balde de " : "Bucket of ";
+                        lJson.addProperty("item." + ExampleMod.MODID + "." + fluidDef.id + "_bucket", bucketPrefix + fluidName);
+                        if (fluidDef.description != null) {
+                            lJson.addProperty("jei." + ExampleMod.MODID + "." + fluidDef.id + "_bucket.description", fluidDef.description.get(lang));
+                        }
                     }
                 }
 
-                langJson.addProperty("fluid_type." + ExampleMod.MODID + "." + fluidDef.id, fluidDef.name != null ? fluidDef.name : fluidDef.id);
-                langJson.addProperty("block." + ExampleMod.MODID + "." + fluidDef.id, fluidDef.name != null ? fluidDef.name : fluidDef.id);
+                for (String lang : langs) {
+                    JsonObject lJson = langJsonMap.get(lang);
+                    String fluidName = fluidDef.name != null ? fluidDef.name.get(lang) : fluidDef.id;
+                    lJson.addProperty("fluid_type." + ExampleMod.MODID + "." + fluidDef.id, fluidName);
+                    lJson.addProperty("block." + ExampleMod.MODID + "." + fluidDef.id, fluidName);
+                }
 
                 // Fluid Blockstate
                 JsonObject fluidBlockState = new JsonObject();
@@ -610,8 +654,10 @@ public class ContentManager {
                 }
             }
 
-            // Write lang JSON
-            Files.writeString(langDir.resolve("en_us.json"), GSON.toJson(langJson), StandardCharsets.UTF_8);
+            // Write lang JSONs
+            for (String lang : langs) {
+                Files.writeString(langDir.resolve(lang + ".json"), GSON.toJson(langJsonMap.get(lang)), StandardCharsets.UTF_8);
+            }
         } catch (Exception e) {
             LOGGER.error("[ExampleMod] Error generating dynamic resource pack", e);
         }

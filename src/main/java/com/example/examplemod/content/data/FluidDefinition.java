@@ -4,8 +4,8 @@ import java.util.List;
 
 public class FluidDefinition {
     public String id;
-    public String name;
-    public String description;
+    public LocalizedText name;
+    public LocalizedText description;
 
     public Rendering rendering = new Rendering();
     public Physics physics = new Physics();

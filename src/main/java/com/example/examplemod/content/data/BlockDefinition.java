@@ -4,15 +4,15 @@ import java.util.List;
 
 public class BlockDefinition {
     public String id;
-    public String name;
-    public String description;
+    public LocalizedText name;
+    public LocalizedText description;
     public float destroy_time = 1.5f;
     public float explosion_resistance = 6.0f;
     public int light_emission = 0;
     public String sound_type = "stone"; // "stone", "wood", "metal", "glass", "grass", "gravel", "sand", "wool", "deepslate"
     public String map_color = "stone";
     public boolean requires_tool = true;
-    public String waila_info;
+    public LocalizedText waila_info;
     public boolean has_item = true;
     public String creative_tab = "example_tab";
     public List<String> extra_tooltips;

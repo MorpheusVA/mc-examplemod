@@ -77,7 +77,7 @@ public class DynamicBlock extends Block {
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag);
 
         if (definition.description != null && !definition.description.isBlank()) {
-            tooltipComponents.add(Component.literal(definition.description).withStyle(ChatFormatting.GRAY));
+            tooltipComponents.add(Component.translatable("jei." + com.example.examplemod.ExampleMod.MODID + "." + definition.id + ".description").withStyle(ChatFormatting.GRAY));
         }
 
         if (definition.extra_tooltips != null) {
