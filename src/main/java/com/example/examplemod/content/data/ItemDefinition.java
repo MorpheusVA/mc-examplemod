@@ -12,6 +12,7 @@ public class ItemDefinition {
     public FoodProperties food;
     public String creative_tab = "example_tab";
     public List<String> extra_tooltips;
+    public List<String> tags;
 
     public static class FoodProperties {
         public int nutrition = 4;

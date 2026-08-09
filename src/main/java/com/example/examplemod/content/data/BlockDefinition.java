@@ -16,6 +16,7 @@ public class BlockDefinition {
     public boolean has_item = true;
     public String creative_tab = "example_tab";
     public List<String> extra_tooltips;
+    public List<String> tags;
 
     // Rotation / Placement constraint:
     // "none" (static, no rotation)

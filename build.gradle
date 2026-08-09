@@ -140,3 +140,18 @@ neoForge.ideSyncTask generateModMetadata
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+tasks.withType(Copy).configureEach {
+    exclude '**/desktop.ini'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(ProcessResources).configureEach {
+    exclude '**/desktop.ini'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(Jar).configureEach {
+    exclude '**/desktop.ini'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

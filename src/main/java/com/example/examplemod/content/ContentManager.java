@@ -7,11 +7,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
+
+import net.minecraft.resources.ResourceLocation;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.content.data.BlockDefinition;
@@ -480,13 +485,19 @@ public class ContentManager {
                 }
             }
 
-            // 4. Generate fluid bucket models and lang
+            // 4. Generate fluid bucket models, textures (auto-masking + animation), and lang
             for (FluidDefinition fluidDef : fluidDefinitions.values()) {
                 if (fluidDef.bucket.has_bucket) {
+                    String bucketTex = fluidDef.bucket.texture != null ? fluidDef.bucket.texture : fluidDef.id + "_bucket";
+
+                    Path userBucketPath = texturesItemDir.resolve(bucketTex + ".png");
+                    if (!Files.exists(userBucketPath)) {
+                        generateFluidBucketTexture(fluidDef, texturesPackItemDir.resolve(bucketTex + ".png"), texturesPackItemDir.resolve(bucketTex + ".png.mcmeta"));
+                    }
+
                     JsonObject bucketModel = new JsonObject();
                     bucketModel.addProperty("parent", "item/generated");
                     JsonObject textures = new JsonObject();
-                    String bucketTex = fluidDef.bucket.texture != null ? fluidDef.bucket.texture : fluidDef.id + "_bucket";
                     textures.addProperty("layer0", ExampleMod.MODID + ":item/" + bucketTex);
                     bucketModel.add("textures", textures);
 
@@ -548,6 +559,56 @@ public class ContentManager {
             atlasJson.add("sources", sources);
 
             Files.writeString(atlasesDir.resolve("blocks.json"), GSON.toJson(atlasJson), StandardCharsets.UTF_8);
+
+            // 7. Generate Data Tags for Items, Blocks, and Fluids (compatible with KubeJS, CraftTweaker, Almost Unified)
+            Map<String, Map<String, List<String>>> tagData = new HashMap<>();
+
+            for (ItemDefinition itemDef : itemDefinitions.values()) {
+                if (itemDef.tags != null) {
+                    for (String tagStr : itemDef.tags) {
+                        addTagEntry(tagData, "item", tagStr, ExampleMod.MODID + ":" + itemDef.id);
+                    }
+                }
+            }
+
+            for (BlockDefinition blockDef : blockDefinitions.values()) {
+                if (blockDef.tags != null) {
+                    for (String tagStr : blockDef.tags) {
+                        addTagEntry(tagData, "block", tagStr, ExampleMod.MODID + ":" + blockDef.id);
+                    }
+                }
+            }
+
+            for (FluidDefinition fluidDef : fluidDefinitions.values()) {
+                if (fluidDef.tags != null) {
+                    for (String tagStr : fluidDef.tags) {
+                        addTagEntry(tagData, "fluid", tagStr, ExampleMod.MODID + ":" + fluidDef.id);
+                        addTagEntry(tagData, "fluid", tagStr, ExampleMod.MODID + ":flowing_" + fluidDef.id);
+                    }
+                }
+            }
+
+            Path dataDir = generatedPackDir.resolve("data");
+            for (Map.Entry<String, Map<String, List<String>>> nsEntry : tagData.entrySet()) {
+                String namespace = nsEntry.getKey();
+                for (Map.Entry<String, List<String>> tagEntry : nsEntry.getValue().entrySet()) {
+                    String relPath = tagEntry.getKey();
+                    List<String> values = tagEntry.getValue();
+
+                    Path tagFilePath = dataDir.resolve(namespace).resolve("tags").resolve(relPath + ".json");
+                    Files.createDirectories(tagFilePath.getParent());
+
+                    JsonObject tagJson = new JsonObject();
+                    tagJson.addProperty("replace", false);
+                    com.google.gson.JsonArray valArray = new com.google.gson.JsonArray();
+                    for (String v : values) {
+                        valArray.add(v);
+                    }
+                    tagJson.add("values", valArray);
+
+                    Files.writeString(tagFilePath, GSON.toJson(tagJson), StandardCharsets.UTF_8);
+                }
+            }
 
             // Write lang JSON
             Files.writeString(langDir.resolve("en_us.json"), GSON.toJson(langJson), StandardCharsets.UTF_8);
@@ -687,5 +748,207 @@ public class ContentManager {
         } catch (Exception e) {
             LOGGER.error("[ExampleMod] Error writing mcmeta file at {}", mcmetaPath, e);
         }
+    }
+
+    private void generateFluidBucketTexture(FluidDefinition fluidDef, Path outBucketPngPath, Path outBucketMcmetaPath) {
+        try {
+            java.awt.image.BufferedImage templateImage = null;
+            java.awt.image.BufferedImage emptyBucketImage = null;
+
+            try (InputStream in = ExampleMod.class.getResourceAsStream("/assets/examplemod/textures/template/bucket_template.png")) {
+                if (in != null) templateImage = javax.imageio.ImageIO.read(in);
+            } catch (Exception ignored) {}
+
+            try (InputStream in = ExampleMod.class.getResourceAsStream("/assets/examplemod/textures/template/bucket_empty.png")) {
+                if (in != null) emptyBucketImage = javax.imageio.ImageIO.read(in);
+            } catch (Exception ignored) {}
+
+            if (templateImage == null) {
+                Path diskTemplate = rootDir.resolve("templates").resolve("bucket_template.png");
+                if (Files.exists(diskTemplate)) templateImage = javax.imageio.ImageIO.read(diskTemplate.toFile());
+            }
+
+            if (emptyBucketImage == null) {
+                Path diskEmpty = rootDir.resolve("templates").resolve("bucket_empty.png");
+                if (Files.exists(diskEmpty)) emptyBucketImage = javax.imageio.ImageIO.read(diskEmpty.toFile());
+            }
+
+            if (templateImage == null) {
+                LOGGER.warn("[ExampleMod] Could not load bucket_template.png for fluid bucket generation.");
+                return;
+            }
+
+            int w = templateImage.getWidth();
+            int h = templateImage.getHeight();
+
+            // Smoothly rescale emptyBucketImage to match template dimensions (e.g. 16x16)
+            if (emptyBucketImage != null && (emptyBucketImage.getWidth() != w || emptyBucketImage.getHeight() != h)) {
+                java.awt.Image scaled = emptyBucketImage.getScaledInstance(w, h, java.awt.Image.SCALE_SMOOTH);
+                java.awt.image.BufferedImage resized = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g2d = resized.createGraphics();
+                g2d.drawImage(scaled, 0, 0, null);
+                g2d.dispose();
+                emptyBucketImage = resized;
+            }
+
+            String flowTexName = fluidDef.rendering.flow_texture != null ? fluidDef.rendering.flow_texture : fluidDef.id + "_flow";
+            Path fluidTexPngPath = generatedPackDir.resolve("assets").resolve(ExampleMod.MODID).resolve("textures").resolve("block").resolve(flowTexName + ".png");
+            if (!Files.exists(fluidTexPngPath)) {
+                String stillTexName = fluidDef.rendering.still_texture != null ? fluidDef.rendering.still_texture : fluidDef.id + "_still";
+                fluidTexPngPath = generatedPackDir.resolve("assets").resolve(ExampleMod.MODID).resolve("textures").resolve("block").resolve(stillTexName + ".png");
+            }
+
+            java.awt.image.BufferedImage fluidTexture = null;
+            if (Files.exists(fluidTexPngPath)) {
+                fluidTexture = javax.imageio.ImageIO.read(fluidTexPngPath.toFile());
+            }
+
+            int tintARGB = parseColor(fluidDef.rendering);
+            int tintA = (tintARGB >> 24) & 0xFF;
+            int tintR = (tintARGB >> 16) & 0xFF;
+            int tintG = (tintARGB >> 8) & 0xFF;
+            int tintB = tintARGB & 0xFF;
+
+            boolean isAnimated = Boolean.TRUE.equals(fluidDef.bucket.animated_bucket) && fluidTexture != null && fluidTexture.getHeight() > h;
+            int numFrames = isAnimated ? fluidTexture.getHeight() / h : 1;
+
+            java.awt.image.BufferedImage bucketSheet = new java.awt.image.BufferedImage(
+                    w, h * numFrames, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+
+            for (int f = 0; f < numFrames; f++) {
+                int frameOffsetY = f * h;
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        int templatePixel = templateImage.getRGB(x, y);
+                        int tA = (templatePixel >> 24) & 0xFF;
+                        int tR = (templatePixel >> 16) & 0xFF;
+                        int tG = (templatePixel >> 8) & 0xFF;
+                        int tB = templatePixel & 0xFF;
+
+                        boolean isBackground = (tA == 0) || (tR >= 255 && tG >= 255 && tB >= 255);
+                        boolean isGreenMask = !isBackground && (tG > (tR + 20) && tG > (tB + 20));
+
+                        if (isBackground) {
+                            bucketSheet.setRGB(x, y + frameOffsetY, 0);
+                        } else if (isGreenMask) {
+                            int fluidPixel = 0xFFFFFFFF;
+                            if (fluidTexture != null) {
+                                int sampleY = (y + (f * h)) % fluidTexture.getHeight();
+                                int sampleX = x % fluidTexture.getWidth();
+                                fluidPixel = fluidTexture.getRGB(sampleX, sampleY);
+                            }
+                            int fA = (fluidPixel >> 24) & 0xFF;
+                            int fR = (fluidPixel >> 16) & 0xFF;
+                            int fG = (fluidPixel >> 8) & 0xFF;
+                            int fB = fluidPixel & 0xFF;
+
+                            int fgA = (fA * tintA) / 255;
+                            int fgR = (fR * tintR) / 255;
+                            int fgG = (fG * tintG) / 255;
+                            int fgB = (fB * tintB) / 255;
+
+                            int emptyPixel = (emptyBucketImage != null) ? emptyBucketImage.getRGB(x, y) : templatePixel;
+                            int bgA = (emptyPixel >> 24) & 0xFF;
+                            int bgR = (emptyPixel >> 16) & 0xFF;
+                            int bgG = (emptyPixel >> 8) & 0xFF;
+                            int bgB = emptyPixel & 0xFF;
+
+                            if (bgA == 0 || (bgR > 230 && bgG > 230 && bgB > 230)) {
+                                bgA = 255;
+                                bgR = 0x48;
+                                bgG = 0x48;
+                                bgB = 0x48;
+                            }
+
+                            float srcA = fgA / 255.0f;
+                            float dstA = (bgA / 255.0f) * (1.0f - srcA);
+                            float outA = srcA + dstA;
+
+                            int finalR = bgR;
+                            int finalG = bgG;
+                            int finalB = bgB;
+                            int finalA = (int) (outA * 255.0f);
+
+                            if (outA > 0.001f) {
+                                finalR = Math.min(255, Math.max(0, Math.round((fgR * srcA + bgR * dstA) / outA)));
+                                finalG = Math.min(255, Math.max(0, Math.round((fgG * srcA + bgG * dstA) / outA)));
+                                finalB = Math.min(255, Math.max(0, Math.round((fgB * srcA + bgB * dstA) / outA)));
+                            }
+
+                            int argb = (finalA << 24) | (finalR << 16) | (finalG << 8) | finalB;
+                            bucketSheet.setRGB(x, y + frameOffsetY, argb);
+                        } else {
+                            int drawPixel = templatePixel;
+                            if (emptyBucketImage != null) {
+                                int emptyPixel = emptyBucketImage.getRGB(x, y);
+                                int eA = (emptyPixel >> 24) & 0xFF;
+                                int eR = (emptyPixel >> 16) & 0xFF;
+                                int eG = (emptyPixel >> 8) & 0xFF;
+                                int eB = emptyPixel & 0xFF;
+                                if (eA > 0 && !(eR > 230 && eG > 230 && eB > 230)) {
+                                    drawPixel = emptyPixel;
+                                }
+                            }
+                            bucketSheet.setRGB(x, y + frameOffsetY, drawPixel);
+                        }
+                    }
+                }
+            }
+
+            javax.imageio.ImageIO.write(bucketSheet, "PNG", outBucketPngPath.toFile());
+
+            if (isAnimated) {
+                Integer flowFt = fluidDef.rendering.flow_frametime != null ? fluidDef.rendering.flow_frametime : fluidDef.rendering.frametime;
+                int frametimeTicks = flowFt != null ? flowFt : 2;
+                Boolean interp = fluidDef.rendering.interpolate != null ? fluidDef.rendering.interpolate : true;
+                generateOrUpdateMcmeta(outBucketMcmetaPath, frametimeTicks, interp);
+            }
+
+            LOGGER.info("[ExampleMod] Dynamically generated {} fluid bucket texture (animated={}, blended=true)", fluidDef.id, isAnimated);
+        } catch (Exception e) {
+            LOGGER.error("[ExampleMod] Error generating bucket texture for {}", fluidDef.id, e);
+        }
+    }
+
+    private int parseColor(FluidDefinition.Rendering rendering) {
+        String hex = rendering.tint_color;
+        int baseColor = 0xFFFFFFFF;
+        if (hex != null && !hex.isBlank()) {
+            try {
+                String clean = hex.startsWith("#") ? hex.substring(1) : hex;
+                if (clean.length() == 6) {
+                    baseColor = (int) (0xFF000000L | Long.parseLong(clean, 16));
+                } else if (clean.length() == 8) {
+                    baseColor = (int) Long.parseLong(clean, 16);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        Float op = rendering.opacity;
+        if (op == null && rendering.transparency != null) {
+            float t = rendering.transparency > 1.0f ? rendering.transparency / 100.0f : rendering.transparency;
+            op = 1.0f - t;
+        }
+
+        if (op != null) {
+            float norm = op > 1.0f ? (op / 100.0f) : op;
+            int alpha = Math.max(0, Math.min(255, (int) (norm * 255.0f)));
+            baseColor = (alpha << 24) | (baseColor & 0x00FFFFFF);
+        }
+        return baseColor;
+    }
+
+    private void addTagEntry(Map<String, Map<String, List<String>>> tagMap, String defaultCategory, String tagString, String elementId) {
+        if (tagString == null || tagString.isBlank()) return;
+        try {
+            ResourceLocation loc = ResourceLocation.parse(tagString);
+            String namespace = loc.getNamespace();
+            String path = loc.getPath();
+
+            String fullTagKey = defaultCategory + "s/" + path;
+            tagMap.computeIfAbsent(namespace, k -> new HashMap<>())
+                  .computeIfAbsent(fullTagKey, k -> new ArrayList<>())
+                  .add(elementId);
+        } catch (Exception ignored) {}
     }
 }

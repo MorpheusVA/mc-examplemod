@@ -63,9 +63,12 @@ public class FluidDefinition {
         public float linger_seconds = 1.0f; // Remains for X seconds after leaving the fluid
     }
 
+    public List<String> tags;
+
     public static class Bucket {
         public boolean has_bucket = true;
         public String creative_tab = "example_tab";
         public String texture;
+        public Boolean animated_bucket = true; // Toggle animated fluid inside bucket
     }
 }
