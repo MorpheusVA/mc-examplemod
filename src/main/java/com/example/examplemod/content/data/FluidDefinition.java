@@ -18,6 +18,7 @@ public class FluidDefinition {
         public Float opacity;     // 0.0 to 1.0 (or 0 to 100)
         public Float transparency; // 0.0 to 1.0 (or 0 to 100)
         public int luminosity = 0; // 0 to 15
+        public String use_vanilla_texture; // "lava" or "water"
         public String still_texture;
         public String flow_texture;
 

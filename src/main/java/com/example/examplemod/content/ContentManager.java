@@ -598,11 +598,11 @@ public class ContentManager {
                 // Fluid Block Model (particle, still, and flow textures)
                 JsonObject fluidBlockModel = new JsonObject();
                 JsonObject textures = new JsonObject();
-                String stillTex = fluidDef.rendering.still_texture != null ? fluidDef.rendering.still_texture : fluidDef.id + "_still";
-                String flowTex = fluidDef.rendering.flow_texture != null ? fluidDef.rendering.flow_texture : fluidDef.id + "_flow";
-                textures.addProperty("particle", ExampleMod.MODID + ":block/" + stillTex);
-                textures.addProperty("still", ExampleMod.MODID + ":block/" + stillTex);
-                textures.addProperty("flow", ExampleMod.MODID + ":block/" + flowTex);
+                String stillTex = com.example.examplemod.content.fluid.DynamicFluidType.parseTextureLocation(fluidDef.rendering.use_vanilla_texture, fluidDef.rendering.still_texture, fluidDef.id + "_still", false).toString();
+                String flowTex = com.example.examplemod.content.fluid.DynamicFluidType.parseTextureLocation(fluidDef.rendering.use_vanilla_texture, fluidDef.rendering.flow_texture, fluidDef.id + "_flow", true).toString();
+                textures.addProperty("particle", stillTex);
+                textures.addProperty("still", stillTex);
+                textures.addProperty("flow", flowTex);
                 fluidBlockModel.add("textures", textures);
                 Files.writeString(modelsBlockDir.resolve(fluidDef.id + ".json"), GSON.toJson(fluidBlockModel), StandardCharsets.UTF_8);
 

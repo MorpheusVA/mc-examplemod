@@ -16,12 +16,23 @@ public class DynamicFluidType extends FluidType {
         super(createProperties(definition));
         this.definition = definition;
 
-        String still = definition.rendering.still_texture != null ? definition.rendering.still_texture : definition.id + "_still";
-        String flow = definition.rendering.flow_texture != null ? definition.rendering.flow_texture : definition.id + "_flow";
-
-        this.stillTexture = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "block/" + still);
-        this.flowingTexture = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "block/" + flow);
+        this.stillTexture = parseTextureLocation(definition.rendering.use_vanilla_texture, definition.rendering.still_texture, definition.id + "_still", false);
+        this.flowingTexture = parseTextureLocation(definition.rendering.use_vanilla_texture, definition.rendering.flow_texture, definition.id + "_flow", true);
         this.tintColor = parseColor(definition.rendering);
+    }
+
+    public static ResourceLocation parseTextureLocation(String useVanilla, String customTex, String defaultName, boolean isFlow) {
+        if ("lava".equalsIgnoreCase(useVanilla) || "lava".equalsIgnoreCase(customTex)) {
+            return ResourceLocation.withDefaultNamespace("block/lava_" + (isFlow ? "flow" : "still"));
+        }
+        if ("water".equalsIgnoreCase(useVanilla) || "water".equalsIgnoreCase(customTex)) {
+            return ResourceLocation.withDefaultNamespace("block/water_" + (isFlow ? "flow" : "still"));
+        }
+        String tex = customTex != null ? customTex : defaultName;
+        if (tex.contains(":")) {
+            return ResourceLocation.parse(tex);
+        }
+        return ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "block/" + tex);
     }
 
     public FluidDefinition getDefinition() {
