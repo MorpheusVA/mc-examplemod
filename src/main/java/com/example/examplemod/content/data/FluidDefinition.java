@@ -54,6 +54,7 @@ public class FluidDefinition {
         public String fluid;       // e.g. "minecraft:water", "minecraft:lava", "examplemod:acid"
         public String this_state = "any";   // "source", "flowing", "any"
         public String target_state = "any"; // "source", "flowing", "any"
+        public String direction = "any";   // "any", "above", "below", "side" / "horizontal"
         public String replace = "this";    // "this" (default) or "target" / "neighbor"
         public String result = "minecraft:air"; // Block ID to spawn, e.g. "minecraft:sand", "minecraft:air"
     }

@@ -92,6 +92,11 @@ public class DynamicLiquidBlock extends LiquidBlock {
                 if ("source".equalsIgnoreCase(rule.target_state) && !neighborIsSource) continue;
                 if ("flowing".equalsIgnoreCase(rule.target_state) && neighborIsSource) continue;
 
+                String ruleDir = rule.direction != null ? rule.direction.toLowerCase() : "any";
+                if ("above".equals(ruleDir) && dir != net.minecraft.core.Direction.UP) continue;
+                if ("below".equals(ruleDir) && dir != net.minecraft.core.Direction.DOWN) continue;
+                if (("horizontal".equals(ruleDir) || "side".equals(ruleDir) || "sideways".equals(ruleDir)) && (dir == net.minecraft.core.Direction.UP || dir == net.minecraft.core.Direction.DOWN)) continue;
+
                 // Match found! Determine target position to place the result block
                 BlockPos replacePos = pos; // Default to replacing this fluid block
                 if ("target".equalsIgnoreCase(rule.replace) || "neighbor".equalsIgnoreCase(rule.replace)) {
