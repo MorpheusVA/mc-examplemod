@@ -57,7 +57,11 @@ public class DynamicFluidType extends FluidType {
                 .lightLevel(def.rendering.luminosity)
                 .canDrown(def.behaviors.drowns_player)
                 .canConvertToSource(def.physics.infinite_source)
-                .canExtinguish(!def.behaviors.catch_fire);
+                .canExtinguish(!def.behaviors.catch_fire)
+                .canSwim(true)
+                .canPushEntity(true)
+                .motionScale(0.014D)
+                .supportsBoating(true);
 
         return props;
     }

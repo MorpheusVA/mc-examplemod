@@ -187,6 +187,21 @@ public class ContentManager {
                 blindness.amplifier = 0;
                 blindness.linger_seconds = 1.0f;
 
+                FluidDefinition.InteractionConfig waterInteraction = new FluidDefinition.InteractionConfig();
+                waterInteraction.fluid = "minecraft:water";
+                waterInteraction.this_state = "any";
+                waterInteraction.target_state = "any";
+                waterInteraction.when = "touches";
+                waterInteraction.result = "minecraft:slime_block";
+
+                FluidDefinition.InteractionConfig lavaInteraction = new FluidDefinition.InteractionConfig();
+                lavaInteraction.fluid = "minecraft:lava";
+                lavaInteraction.this_state = "any";
+                lavaInteraction.target_state = "any";
+                lavaInteraction.when = "touches";
+                lavaInteraction.result = "minecraft:obsidian";
+
+                fluidDef.interactions = java.util.List.of(waterInteraction, lavaInteraction);
                 fluidDef.behaviors.status_effects = java.util.List.of(poison, blindness);
                 fluidDef.bucket.has_bucket = true;
 
