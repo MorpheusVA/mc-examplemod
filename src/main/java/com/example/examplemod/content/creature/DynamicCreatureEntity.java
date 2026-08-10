@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -98,6 +99,17 @@ public class DynamicCreatureEntity extends Monster {
                 setItemFromConfig(EquipmentSlot.FEET, eq.boots);
             }
         }
+    }
+
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        String base = definition != null && definition.base_entity != null ? definition.base_entity.toLowerCase() : "zombie";
+        boolean isRanged = "pillager".equals(base) || "illager".equals(base) || "ranged".equals(base)
+                || (definition != null && definition.ranged_attack != null && definition.ranged_attack.enabled);
+        if (isRanged) {
+            return false; // Ranged entities do not deal melee damage on touch!
+        }
+        return super.doHurtTarget(target);
     }
 
     @Override
@@ -192,6 +204,7 @@ public class DynamicCreatureEntity extends Monster {
         private final CreatureDefinition.RangedAttack config;
         private int attackTime = -1;
         private int aimTimer = 0;
+        private int seeTime = 0;
 
         public DynamicRangedAttackGoal(DynamicCreatureEntity mob, CreatureDefinition.RangedAttack config) {
             this.mob = mob;
@@ -218,6 +231,7 @@ public class DynamicCreatureEntity extends Monster {
             this.mob.setChargingCrossbow(false);
             this.aimTimer = 0;
             this.attackTime = -1;
+            this.seeTime = 0;
         }
 
         @Override
@@ -234,16 +248,22 @@ public class DynamicCreatureEntity extends Monster {
             double maxDistSq = config.attack_radius * config.attack_radius;
             boolean canSee = mob.getSensing().hasLineOfSight(target);
 
+            if (canSee) {
+                this.seeTime++;
+            } else {
+                this.seeTime = 0;
+            }
+
             mob.getLookControl().setLookAt(target, 30.0F, 30.0F);
 
             boolean canWalk = config.can_shoot_while_walking;
 
-            if (distSq <= maxDistSq && canSee) {
+            if (distSq <= maxDistSq && this.seeTime >= 5) {
                 if (!canWalk) {
                     mob.getNavigation().stop();
                 } else {
-                    if (distSq < 36.0D) {
-                        mob.getNavigation().moveTo(mob.getX() - (target.getX() - mob.getX()), mob.getY(), mob.getZ() - (target.getZ() - mob.getZ()), 0.8D);
+                    if (distSq < 25.0D) {
+                        mob.getNavigation().stop();
                     } else {
                         mob.getNavigation().moveTo(target, 0.8D);
                     }
@@ -275,31 +295,30 @@ public class DynamicCreatureEntity extends Monster {
 
             String projId = config.projectile != null ? config.projectile.toLowerCase() : "minecraft:arrow";
 
+            double spawnX = mob.getX();
+            double spawnY = mob.getEyeY() - 0.15D;
+            double spawnZ = mob.getZ();
+
+            double d0 = target.getX() - spawnX;
+            double d1 = target.getY(0.333D) - spawnY;
+            double d2 = target.getZ() - spawnZ;
+            double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+
             if ("minecraft:firework_rocket".equals(projId)) {
                 ItemStack fireworkStack = new ItemStack(Items.FIREWORK_ROCKET);
-                FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, mob.getX(), mob.getEyeY() - 0.15D, mob.getZ(), true);
-                double d0 = target.getX() - mob.getX();
-                double d1 = target.getY(0.333D) - firework.getY();
-                double d2 = target.getZ() - mob.getZ();
-                double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+                FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, spawnX, spawnY, spawnZ, true);
                 firework.shoot(d0, d1 + d3 * 0.15D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(firework);
             } else if ("minecraft:spectral_arrow".equals(projId)) {
-                SpectralArrow arrow = new SpectralArrow(level, mob, new ItemStack(Items.SPECTRAL_ARROW), new ItemStack(Items.CROSSBOW));
-                double d0 = target.getX() - mob.getX();
-                double d1 = target.getY(0.333D) - arrow.getY();
-                double d2 = target.getZ() - mob.getZ();
-                double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+                SpectralArrow arrow = new SpectralArrow(level, spawnX, spawnY, spawnZ, new ItemStack(Items.SPECTRAL_ARROW), new ItemStack(Items.CROSSBOW));
+                arrow.setOwner(mob);
                 arrow.shoot(d0, d1 + d3 * 0.2D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
             } else {
-                Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), new ItemStack(Items.CROSSBOW));
-                double d0 = target.getX() - mob.getX();
-                double d1 = target.getY(0.333D) - arrow.getY();
-                double d2 = target.getZ() - mob.getZ();
-                double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+                Arrow arrow = new Arrow(level, spawnX, spawnY, spawnZ, new ItemStack(Items.ARROW), new ItemStack(Items.CROSSBOW));
+                arrow.setOwner(mob);
                 arrow.shoot(d0, d1 + d3 * 0.2D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
