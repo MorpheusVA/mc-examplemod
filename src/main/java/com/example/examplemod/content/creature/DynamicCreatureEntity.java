@@ -3,16 +3,22 @@ package com.example.examplemod.content.creature;
 import com.example.examplemod.content.data.CreatureDefinition;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
@@ -20,10 +26,11 @@ import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Arrow;
+import net.minecraft.world.entity.projectile.FireworkRocketEntity;
+import net.minecraft.world.entity.projectile.SpectralArrow;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -31,7 +38,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumSet;
+
 public class DynamicCreatureEntity extends Monster {
+    private static final EntityDataAccessor<Boolean> DATA_CHARGING_CROSSBOW = SynchedEntityData.defineId(DynamicCreatureEntity.class, EntityDataSerializers.BOOLEAN);
+
     private final CreatureDefinition definition;
 
     public DynamicCreatureEntity(EntityType<? extends Monster> type, Level level, CreatureDefinition definition) {
@@ -44,18 +55,43 @@ public class DynamicCreatureEntity extends Monster {
     }
 
     @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_CHARGING_CROSSBOW, false);
+    }
+
+    public boolean isChargingCrossbow() {
+        return this.entityData.get(DATA_CHARGING_CROSSBOW);
+    }
+
+    public void setChargingCrossbow(boolean charging) {
+        this.entityData.set(DATA_CHARGING_CROSSBOW, charging);
+    }
+
+    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
 
         String base = definition != null && definition.base_entity != null ? definition.base_entity.toLowerCase() : "zombie";
+        boolean isRanged = "pillager".equals(base) || "illager".equals(base) || "ranged".equals(base)
+                || (definition != null && definition.ranged_attack != null && definition.ranged_attack.enabled);
 
-        if ("cow".equals(base) || "pig".equals(base) || "animal".equals(base) || "passive".equals(base)) {
+        if (isRanged) {
+            CreatureDefinition.RangedAttack config = (definition != null && definition.ranged_attack != null) ? definition.ranged_attack : new CreatureDefinition.RangedAttack();
+            this.goalSelector.addGoal(1, new DynamicRangedAttackGoal(this, config));
+            this.goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, 1.0D));
+            this.goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 8.0F));
+            this.goalSelector.addGoal(4, new RandomLookAroundGoal(this));
+
+            this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+            this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
+        } else if ("cow".equals(base) || "pig".equals(base) || "animal".equals(base) || "passive".equals(base)) {
             this.goalSelector.addGoal(1, new PanicGoal(this, 1.25D));
             this.goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, 1.0D));
             this.goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 6.0F));
             this.goalSelector.addGoal(4, new RandomLookAroundGoal(this));
         } else {
-            // Aggressive / Monster AI (Zombie, Skeleton, Creeper, Spider, Iron Golem, etc.)
+            // Aggressive / Melee Monster AI
             this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.2D, false));
             this.goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, 1.0D));
             this.goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -117,5 +153,121 @@ public class DynamicCreatureEntity extends Monster {
                 this.setItemSlot(slot, new ItemStack(item));
             }
         } catch (Exception ignored) {}
+    }
+
+    public static class DynamicRangedAttackGoal extends Goal {
+        private final DynamicCreatureEntity mob;
+        private final CreatureDefinition.RangedAttack config;
+        private int attackTime = -1;
+        private int aimTimer = 0;
+
+        public DynamicRangedAttackGoal(DynamicCreatureEntity mob, CreatureDefinition.RangedAttack config) {
+            this.mob = mob;
+            this.config = config;
+            this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            LivingEntity target = mob.getTarget();
+            return target != null && target.isAlive();
+        }
+
+        @Override
+        public void start() {
+            super.start();
+            this.mob.setAggressive(true);
+        }
+
+        @Override
+        public void stop() {
+            super.stop();
+            this.mob.setAggressive(false);
+            this.mob.setChargingCrossbow(false);
+            this.aimTimer = 0;
+            this.attackTime = -1;
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void tick() {
+            LivingEntity target = mob.getTarget();
+            if (target == null) return;
+
+            double distSq = mob.distanceToSqr(target);
+            double maxDistSq = config.attack_radius * config.attack_radius;
+            boolean canSee = mob.getSensing().hasLineOfSight(target);
+
+            mob.getLookControl().setLookAt(target, 30.0F, 30.0F);
+
+            boolean canWalk = config.can_shoot_while_walking;
+
+            if (distSq <= maxDistSq && canSee) {
+                if (!canWalk) {
+                    mob.getNavigation().stop();
+                } else {
+                    mob.getNavigation().moveTo(target, 1.0D);
+                }
+
+                if (attackTime <= 0) {
+                    mob.setChargingCrossbow(true);
+                    aimTimer++;
+                    if (aimTimer >= config.aim_ticks) {
+                        shootProjectile(target);
+                        mob.setChargingCrossbow(false);
+                        aimTimer = 0;
+                        attackTime = config.reload_time_ticks;
+                    }
+                } else {
+                    attackTime--;
+                }
+            } else {
+                mob.setChargingCrossbow(false);
+                aimTimer = 0;
+                mob.getNavigation().moveTo(target, 1.0D);
+            }
+        }
+
+        private void shootProjectile(LivingEntity target) {
+            Level level = mob.level();
+            float speed = config.projectile_speed;
+            float inaccuracy = config.projectile_inaccuracy;
+
+            String projId = config.projectile != null ? config.projectile.toLowerCase() : "minecraft:arrow";
+
+            if ("minecraft:firework_rocket".equals(projId)) {
+                ItemStack fireworkStack = new ItemStack(Items.FIREWORK_ROCKET);
+                FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, mob.getX(), mob.getEyeY() - 0.15D, mob.getZ(), true);
+                double d0 = target.getX() - mob.getX();
+                double d1 = target.getY(0.333D) - firework.getY();
+                double d2 = target.getZ() - mob.getZ();
+                double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+                firework.shoot(d0, d1 + d3 * 0.15D, d2, speed, inaccuracy);
+                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
+                level.addFreshEntity(firework);
+            } else if ("minecraft:spectral_arrow".equals(projId)) {
+                SpectralArrow arrow = new SpectralArrow(level, mob, new ItemStack(Items.SPECTRAL_ARROW), new ItemStack(Items.CROSSBOW));
+                double d0 = target.getX() - mob.getX();
+                double d1 = target.getY(0.333D) - arrow.getY();
+                double d2 = target.getZ() - mob.getZ();
+                double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+                arrow.shoot(d0, d1 + d3 * 0.2D, d2, speed, inaccuracy);
+                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
+                level.addFreshEntity(arrow);
+            } else {
+                Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), new ItemStack(Items.CROSSBOW));
+                double d0 = target.getX() - mob.getX();
+                double d1 = target.getY(0.333D) - arrow.getY();
+                double d2 = target.getZ() - mob.getZ();
+                double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+                arrow.shoot(d0, d1 + d3 * 0.2D, d2, speed, inaccuracy);
+                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
+                level.addFreshEntity(arrow);
+            }
+        }
     }
 }

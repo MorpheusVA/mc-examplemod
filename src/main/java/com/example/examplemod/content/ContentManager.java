@@ -282,6 +282,48 @@ public class ContentManager {
                     if (in != null) Files.copy(in, defaultEntityTexture, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
+
+            Path defaultPillagerJson = creaturesDir.resolve("example_pillager.json");
+            if (!Files.exists(defaultPillagerJson)) {
+                com.example.examplemod.content.data.CreatureDefinition pillagerDef = new com.example.examplemod.content.data.CreatureDefinition();
+                pillagerDef.id = "example_pillager";
+                pillagerDef.name = new LocalizedText();
+                pillagerDef.name.put("en_us", "Tactical Pillager");
+                pillagerDef.name.put("pt_br", "Saqueador Tático");
+                pillagerDef.base_entity = "pillager";
+                pillagerDef.texture = "example_pillager";
+
+                pillagerDef.attributes.max_health = 24.0;
+                pillagerDef.attributes.attack_damage = 5.0;
+                pillagerDef.attributes.movement_speed = 0.25;
+                pillagerDef.attributes.armor = 4.0;
+                pillagerDef.attributes.follow_range = 32.0;
+
+                pillagerDef.ranged_attack.enabled = true;
+                pillagerDef.ranged_attack.weapon = "minecraft:crossbow";
+                pillagerDef.ranged_attack.projectile = "minecraft:arrow";
+                pillagerDef.ranged_attack.aim_ticks = 30;
+                pillagerDef.ranged_attack.reload_time_ticks = 40;
+                pillagerDef.ranged_attack.can_shoot_while_walking = true;
+                pillagerDef.ranged_attack.attack_radius = 20.0f;
+
+                pillagerDef.equipment.mainhand = "minecraft:crossbow";
+
+                pillagerDef.spawn_egg.has_egg = true;
+                pillagerDef.spawn_egg.primary_color = "#4A4A4A";
+                pillagerDef.spawn_egg.secondary_color = "#9E2A2B";
+
+                try (Writer writer = Files.newBufferedWriter(defaultPillagerJson, StandardCharsets.UTF_8)) {
+                    GSON.toJson(pillagerDef, writer);
+                }
+            }
+
+            Path defaultPillagerTexture = texturesEntityDir.resolve("example_pillager.png");
+            if (!Files.exists(defaultPillagerTexture)) {
+                try (InputStream in = ExampleMod.class.getResourceAsStream("/assets/examplemod/textures/entity/example_pillager.png")) {
+                    if (in != null) Files.copy(in, defaultPillagerTexture, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
         } catch (Exception e) {
             LOGGER.warn("[ExampleMod] Could not create default examples", e);
         }

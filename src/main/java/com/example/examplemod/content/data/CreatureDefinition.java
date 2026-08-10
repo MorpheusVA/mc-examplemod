@@ -7,8 +7,21 @@ public class CreatureDefinition {
     public String texture; // Texture filename without extension in textures/entity/
 
     public Attributes attributes = new Attributes();
+    public RangedAttack ranged_attack = new RangedAttack();
     public Equipment equipment = new Equipment();
     public SpawnEgg spawn_egg = new SpawnEgg();
+
+    public static class RangedAttack {
+        public boolean enabled = false;
+        public String weapon = "minecraft:crossbow";
+        public String projectile = "minecraft:arrow";
+        public int aim_ticks = 20;
+        public int reload_time_ticks = 30;
+        public boolean can_shoot_while_walking = false;
+        public float attack_radius = 16.0f;
+        public float projectile_speed = 1.6f;
+        public float projectile_inaccuracy = 1.0f;
+    }
 
     public static class Attributes {
         public double max_health = 20.0;
