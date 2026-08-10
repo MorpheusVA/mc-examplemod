@@ -49,6 +49,7 @@ public class DynamicCreatureEntity extends Monster {
     public DynamicCreatureEntity(EntityType<? extends Monster> type, Level level, CreatureDefinition definition) {
         super(type, level);
         this.definition = definition;
+        this.registerCustomGoals();
     }
 
     public CreatureDefinition getDefinition() {
@@ -114,6 +115,10 @@ public class DynamicCreatureEntity extends Monster {
 
     @Override
     protected void registerGoals() {
+        // Goals are registered in registerCustomGoals() because this method is called by super() before definition is initialized.
+    }
+
+    protected void registerCustomGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
 
         String base = definition != null && definition.base_entity != null ? definition.base_entity.toLowerCase() : "zombie";
