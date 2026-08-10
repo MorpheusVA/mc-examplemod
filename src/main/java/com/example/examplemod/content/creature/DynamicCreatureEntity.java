@@ -31,10 +31,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
 
-public class DynamicCreatureEntity extends PathfinderMob {
+public class DynamicCreatureEntity extends Monster {
     private final CreatureDefinition definition;
 
-    public DynamicCreatureEntity(EntityType<? extends PathfinderMob> type, Level level, CreatureDefinition definition) {
+    public DynamicCreatureEntity(EntityType<? extends Monster> type, Level level, CreatureDefinition definition) {
         super(type, level);
         this.definition = definition;
     }
