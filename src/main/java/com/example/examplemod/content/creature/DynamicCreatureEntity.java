@@ -107,7 +107,7 @@ public class DynamicCreatureEntity extends Monster {
         boolean isRanged = "pillager".equals(base) || "illager".equals(base) || "ranged".equals(base)
                 || (definition != null && definition.ranged_attack != null && definition.ranged_attack.enabled);
         if (isRanged) {
-            return false; // Ranged entities do not deal melee damage on touch!
+            return false;
         }
         return super.doHurtTarget(target);
     }
@@ -204,7 +204,6 @@ public class DynamicCreatureEntity extends Monster {
         private final CreatureDefinition.RangedAttack config;
         private int attackTime = -1;
         private int aimTimer = 0;
-        private int seeTime = 0;
 
         public DynamicRangedAttackGoal(DynamicCreatureEntity mob, CreatureDefinition.RangedAttack config) {
             this.mob = mob;
@@ -231,7 +230,6 @@ public class DynamicCreatureEntity extends Monster {
             this.mob.setChargingCrossbow(false);
             this.aimTimer = 0;
             this.attackTime = -1;
-            this.seeTime = 0;
         }
 
         @Override
@@ -248,35 +246,27 @@ public class DynamicCreatureEntity extends Monster {
             double maxDistSq = config.attack_radius * config.attack_radius;
             boolean canSee = mob.getSensing().hasLineOfSight(target);
 
-            if (canSee) {
-                this.seeTime++;
-            } else {
-                this.seeTime = 0;
-            }
-
             mob.getLookControl().setLookAt(target, 30.0F, 30.0F);
 
             boolean canWalk = config.can_shoot_while_walking;
 
-            if (distSq <= maxDistSq && this.seeTime >= 5) {
+            if (distSq <= maxDistSq && canSee) {
                 if (!canWalk) {
                     mob.getNavigation().stop();
+                } else if (distSq < 16.0D) {
+                    mob.getNavigation().stop();
                 } else {
-                    if (distSq < 25.0D) {
-                        mob.getNavigation().stop();
-                    } else {
-                        mob.getNavigation().moveTo(target, 0.8D);
-                    }
+                    mob.getNavigation().moveTo(target, 0.8D);
                 }
 
                 if (attackTime <= 0) {
                     mob.setChargingCrossbow(true);
                     aimTimer++;
-                    if (aimTimer >= config.aim_ticks) {
+                    if (aimTimer >= Math.max(1, config.aim_ticks)) {
                         shootProjectile(target);
                         mob.setChargingCrossbow(false);
                         aimTimer = 0;
-                        attackTime = config.reload_time_ticks;
+                        attackTime = Math.max(1, config.reload_time_ticks);
                     }
                 } else {
                     attackTime--;
@@ -284,41 +274,40 @@ public class DynamicCreatureEntity extends Monster {
             } else {
                 mob.setChargingCrossbow(false);
                 aimTimer = 0;
+                if (attackTime > 0) attackTime--;
                 mob.getNavigation().moveTo(target, 1.0D);
             }
         }
 
         private void shootProjectile(LivingEntity target) {
             Level level = mob.level();
-            float speed = config.projectile_speed;
+            if (level.isClientSide) return;
+
+            float speed = config.projectile_speed > 0 ? config.projectile_speed : 1.6f;
             float inaccuracy = config.projectile_inaccuracy;
 
             String projId = config.projectile != null ? config.projectile.toLowerCase() : "minecraft:arrow";
 
-            double spawnX = mob.getX();
-            double spawnY = mob.getEyeY() - 0.15D;
-            double spawnZ = mob.getZ();
-
-            double d0 = target.getX() - spawnX;
-            double d1 = target.getY(0.333D) - spawnY;
-            double d2 = target.getZ() - spawnZ;
+            double d0 = target.getX() - mob.getX();
+            double d1 = target.getY(0.333D) - (mob.getY() + mob.getEyeHeight());
+            double d2 = target.getZ() - mob.getZ();
             double d3 = Math.sqrt(d0 * d0 + d2 * d2);
 
             if ("minecraft:firework_rocket".equals(projId)) {
                 ItemStack fireworkStack = new ItemStack(Items.FIREWORK_ROCKET);
-                FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, spawnX, spawnY, spawnZ, true);
+                FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, mob.getX(), mob.getEyeY() - 0.15D, mob.getZ(), true);
                 firework.shoot(d0, d1 + d3 * 0.15D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(firework);
             } else if ("minecraft:spectral_arrow".equals(projId)) {
-                SpectralArrow arrow = new SpectralArrow(level, spawnX, spawnY, spawnZ, new ItemStack(Items.SPECTRAL_ARROW), new ItemStack(Items.CROSSBOW));
-                arrow.setOwner(mob);
+                SpectralArrow arrow = new SpectralArrow(level, mob, new ItemStack(Items.SPECTRAL_ARROW), new ItemStack(Items.CROSSBOW));
+                arrow.setPos(mob.getX(), mob.getEyeY() - 0.15D, mob.getZ());
                 arrow.shoot(d0, d1 + d3 * 0.2D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
             } else {
-                Arrow arrow = new Arrow(level, spawnX, spawnY, spawnZ, new ItemStack(Items.ARROW), new ItemStack(Items.CROSSBOW));
-                arrow.setOwner(mob);
+                Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), new ItemStack(Items.CROSSBOW));
+                arrow.setPos(mob.getX(), mob.getEyeY() - 0.15D, mob.getZ());
                 arrow.shoot(d0, d1 + d3 * 0.2D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
