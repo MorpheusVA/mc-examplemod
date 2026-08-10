@@ -69,6 +69,38 @@ public class DynamicCreatureEntity extends Monster {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        if (!this.level().isClientSide && this.tickCount == 1) {
+            applyDefaultEquipment();
+        }
+    }
+
+    public void applyDefaultEquipment() {
+        if (definition != null && definition.equipment != null) {
+            CreatureDefinition.Equipment eq = definition.equipment;
+            if (getItemBySlot(EquipmentSlot.MAINHAND).isEmpty() && eq.mainhand != null) {
+                setItemFromConfig(EquipmentSlot.MAINHAND, eq.mainhand);
+            }
+            if (getItemBySlot(EquipmentSlot.OFFHAND).isEmpty() && eq.offhand != null) {
+                setItemFromConfig(EquipmentSlot.OFFHAND, eq.offhand);
+            }
+            if (getItemBySlot(EquipmentSlot.HEAD).isEmpty() && eq.helmet != null) {
+                setItemFromConfig(EquipmentSlot.HEAD, eq.helmet);
+            }
+            if (getItemBySlot(EquipmentSlot.CHEST).isEmpty() && eq.chestplate != null) {
+                setItemFromConfig(EquipmentSlot.CHEST, eq.chestplate);
+            }
+            if (getItemBySlot(EquipmentSlot.LEGS).isEmpty() && eq.leggings != null) {
+                setItemFromConfig(EquipmentSlot.LEGS, eq.leggings);
+            }
+            if (getItemBySlot(EquipmentSlot.FEET).isEmpty() && eq.boots != null) {
+                setItemFromConfig(EquipmentSlot.FEET, eq.boots);
+            }
+        }
+    }
+
+    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
 
@@ -210,7 +242,11 @@ public class DynamicCreatureEntity extends Monster {
                 if (!canWalk) {
                     mob.getNavigation().stop();
                 } else {
-                    mob.getNavigation().moveTo(target, 1.0D);
+                    if (distSq < 36.0D) {
+                        mob.getNavigation().moveTo(mob.getX() - (target.getX() - mob.getX()), mob.getY(), mob.getZ() - (target.getZ() - mob.getZ()), 0.8D);
+                    } else {
+                        mob.getNavigation().moveTo(target, 0.8D);
+                    }
                 }
 
                 if (attackTime <= 0) {

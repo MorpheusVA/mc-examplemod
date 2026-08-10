@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.minecraft.client.model.AnimationUtils;
+import net.minecraft.client.model.ArmedModel;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayers;
@@ -13,8 +14,10 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.HumanoidArm;
 
 public class DynamicCreatureRenderer extends MobRenderer<DynamicCreatureEntity, EntityModel<DynamicCreatureEntity>> {
     private final CreatureDefinition definition;
@@ -37,6 +40,9 @@ public class DynamicCreatureRenderer extends MobRenderer<DynamicCreatureEntity, 
                     context.getModelManager()
             ));
         }
+
+        // Render held item (Crossbow, Sword, Firearm, Bow, etc.) in mainhand and offhand
+        this.addLayer(new ItemInHandLayer(this, context.getItemInHandRenderer()));
     }
 
     private static EntityModel<DynamicCreatureEntity> createModel(EntityRendererProvider.Context context, CreatureDefinition def) {
@@ -59,7 +65,7 @@ public class DynamicCreatureRenderer extends MobRenderer<DynamicCreatureEntity, 
     }
 
     // Dynamic Illager / Pillager Model
-    public static class DynamicIllagerModel extends EntityModel<DynamicCreatureEntity> {
+    public static class DynamicIllagerModel extends EntityModel<DynamicCreatureEntity> implements ArmedModel {
         private final ModelPart root;
         private final ModelPart head;
         private final ModelPart body;
@@ -76,6 +82,16 @@ public class DynamicCreatureRenderer extends MobRenderer<DynamicCreatureEntity, 
             this.leftArm = root.getChild("left_arm");
             this.rightLeg = root.getChild("right_leg");
             this.leftLeg = root.getChild("left_leg");
+        }
+
+        @Override
+        public void translateToHand(HumanoidArm arm, PoseStack poseStack) {
+            this.root.translateAndRotate(poseStack);
+            if (arm == HumanoidArm.RIGHT) {
+                this.rightArm.translateAndRotate(poseStack);
+            } else {
+                this.leftArm.translateAndRotate(poseStack);
+            }
         }
 
         @Override
