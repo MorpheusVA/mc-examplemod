@@ -42,19 +42,24 @@ public class ContentManager {
     private Path itemsDir;
     private Path blocksDir;
     private Path fluidsDir;
+    private Path creaturesDir;
     private Path texturesItemDir;
     private Path texturesBlockDir;
     private Path texturesFluidDir;
+    private Path texturesEntityDir;
     private Path generatedPackDir;
 
     private final Map<String, ItemDefinition> itemDefinitions = new LinkedHashMap<>();
     private final Map<String, BlockDefinition> blockDefinitions = new LinkedHashMap<>();
     private final Map<String, FluidDefinition> fluidDefinitions = new LinkedHashMap<>();
+    private final Map<String, com.example.examplemod.content.data.CreatureDefinition> creatureDefinitions = new LinkedHashMap<>();
 
     private final Map<String, DynamicItem> dynamicItems = new LinkedHashMap<>();
     private final Map<String, DynamicBlock> dynamicBlocks = new LinkedHashMap<>();
     private final Map<String, BlockItem> dynamicBlockItems = new LinkedHashMap<>();
     private final Map<String, DynamicFluidHolder> dynamicFluids = new LinkedHashMap<>();
+    private final Map<String, net.minecraft.world.entity.EntityType<com.example.examplemod.content.creature.DynamicCreatureEntity>> dynamicEntityTypes = new LinkedHashMap<>();
+    private final Map<String, Item> dynamicSpawnEggs = new LinkedHashMap<>();
 
     public static ContentManager getInstance() {
         return INSTANCE;
@@ -66,18 +71,22 @@ public class ContentManager {
             this.itemsDir = rootDir.resolve("items");
             this.blocksDir = rootDir.resolve("blocks");
             this.fluidsDir = rootDir.resolve("fluids");
+            this.creaturesDir = rootDir.resolve("creatures");
             this.texturesItemDir = rootDir.resolve("textures").resolve("item");
             this.texturesBlockDir = rootDir.resolve("textures").resolve("block");
             this.texturesFluidDir = rootDir.resolve("textures").resolve("fluid");
+            this.texturesEntityDir = rootDir.resolve("textures").resolve("entity");
             this.generatedPackDir = rootDir.resolve("generated_pack");
 
             // Ensure directories exist
             Files.createDirectories(itemsDir);
             Files.createDirectories(blocksDir);
             Files.createDirectories(fluidsDir);
+            Files.createDirectories(creaturesDir);
             Files.createDirectories(texturesItemDir);
             Files.createDirectories(texturesBlockDir);
             Files.createDirectories(texturesFluidDir);
+            Files.createDirectories(texturesEntityDir);
             Files.createDirectories(generatedPackDir);
 
             // Export default examples if missing
@@ -89,8 +98,8 @@ public class ContentManager {
             // Generate runtime resource pack
             generateResourcePack();
 
-            LOGGER.info("[ExampleMod] Loaded {} items, {} blocks, and {} fluids from external configuration at: {}",
-                    itemDefinitions.size(), blockDefinitions.size(), fluidDefinitions.size(), rootDir.toAbsolutePath());
+            LOGGER.info("[ExampleMod] Loaded {} items, {} blocks, {} fluids, and {} creatures from external configuration at: {}",
+                    itemDefinitions.size(), blockDefinitions.size(), fluidDefinitions.size(), creatureDefinitions.size(), rootDir.toAbsolutePath());
         } catch (Exception e) {
             LOGGER.error("[ExampleMod] Failed to initialize external content manager", e);
         }
@@ -238,6 +247,41 @@ public class ContentManager {
                     if (in != null) Files.copy(in, defaultAcidFlowTexture, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
+
+            Path defaultCreatureJson = creaturesDir.resolve("volcanic_zombie.json");
+            if (!Files.exists(defaultCreatureJson)) {
+                com.example.examplemod.content.data.CreatureDefinition creatureDef = new com.example.examplemod.content.data.CreatureDefinition();
+                creatureDef.id = "volcanic_zombie";
+                creatureDef.name = new LocalizedText();
+                creatureDef.name.put("en_us", "Volcanic Zombie");
+                creatureDef.name.put("pt_br", "Zumbi Vulcânico");
+                creatureDef.base_entity = "zombie";
+                creatureDef.texture = "volcanic_zombie";
+
+                creatureDef.attributes.max_health = 35.0;
+                creatureDef.attributes.attack_damage = 6.0;
+                creatureDef.attributes.movement_speed = 0.26;
+                creatureDef.attributes.armor = 6.0;
+
+                creatureDef.equipment.mainhand = "minecraft:iron_sword";
+                creatureDef.equipment.helmet = "minecraft:iron_helmet";
+                creatureDef.equipment.chestplate = "minecraft:iron_chestplate";
+
+                creatureDef.spawn_egg.has_egg = true;
+                creatureDef.spawn_egg.primary_color = "#500000";
+                creatureDef.spawn_egg.secondary_color = "#FF4500";
+
+                try (Writer writer = Files.newBufferedWriter(defaultCreatureJson, StandardCharsets.UTF_8)) {
+                    GSON.toJson(creatureDef, writer);
+                }
+            }
+
+            Path defaultEntityTexture = texturesEntityDir.resolve("volcanic_zombie.png");
+            if (!Files.exists(defaultEntityTexture)) {
+                try (InputStream in = ExampleMod.class.getResourceAsStream("/assets/examplemod/textures/entity/volcanic_zombie.png")) {
+                    if (in != null) Files.copy(in, defaultEntityTexture, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
         } catch (Exception e) {
             LOGGER.warn("[ExampleMod] Could not create default examples", e);
         }
@@ -298,6 +342,22 @@ public class ContentManager {
         } catch (Exception e) {
             LOGGER.error("[ExampleMod] Error scanning fluids directory", e);
         }
+
+        // Load creatures
+        try (Stream<Path> stream = Files.walk(creaturesDir, 1)) {
+            stream.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json")).forEach(path -> {
+                try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                    com.example.examplemod.content.data.CreatureDefinition def = GSON.fromJson(reader, com.example.examplemod.content.data.CreatureDefinition.class);
+                    if (def != null && def.id != null && !def.id.isBlank()) {
+                        creatureDefinitions.put(def.id, def);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("[ExampleMod] Error reading creature JSON: {}", path, e);
+                }
+            });
+        } catch (Exception e) {
+            LOGGER.error("[ExampleMod] Error scanning creatures directory", e);
+        }
     }
 
     private void generateResourcePack() {
@@ -317,6 +377,7 @@ public class ContentManager {
             Path blockstatesDir = assetsModDir.resolve("blockstates");
             Path texturesPackItemDir = assetsModDir.resolve("textures").resolve("item");
             Path texturesPackBlockDir = assetsModDir.resolve("textures").resolve("block");
+            Path texturesPackEntityDir = assetsModDir.resolve("textures").resolve("entity");
             Path langDir = assetsModDir.resolve("lang");
 
             Files.createDirectories(modelsItemDir);
@@ -324,12 +385,14 @@ public class ContentManager {
             Files.createDirectories(blockstatesDir);
             Files.createDirectories(texturesPackItemDir);
             Files.createDirectories(texturesPackBlockDir);
+            Files.createDirectories(texturesPackEntityDir);
             Files.createDirectories(langDir);
 
-            // Process and copy textures (including automatic GIF to sprite sheet conversion & .mcmeta animations)
+            // Process and copy textures
             processTextureDirectory(texturesItemDir, texturesPackItemDir);
             processTextureDirectory(texturesBlockDir, texturesPackBlockDir);
             processTextureDirectory(texturesFluidDir, texturesPackBlockDir);
+            processTextureDirectory(texturesEntityDir, texturesPackEntityDir);
 
             List<String> langs = List.of("en_us", "pt_br");
             Map<String, JsonObject> langJsonMap = new HashMap<>();
@@ -619,6 +682,24 @@ public class ContentManager {
                 }
             }
 
+            // 5. Generate spawn egg models and lang for creatures
+            for (com.example.examplemod.content.data.CreatureDefinition creatureDef : creatureDefinitions.values()) {
+                if (creatureDef.spawn_egg != null && creatureDef.spawn_egg.has_egg) {
+                    JsonObject eggModel = new JsonObject();
+                    eggModel.addProperty("parent", "minecraft:item/template_spawn_egg");
+                    Files.writeString(modelsItemDir.resolve(creatureDef.id + "_spawn_egg.json"), GSON.toJson(eggModel), StandardCharsets.UTF_8);
+
+                    for (String lang : langs) {
+                        JsonObject lJson = langJsonMap.get(lang);
+                        String cName = creatureDef.name != null ? creatureDef.name.get(lang) : creatureDef.id;
+                        String eggPrefix = "pt_br".equalsIgnoreCase(lang) ? "Invocador de " : "Spawn ";
+                        String eggSuffix = "pt_br".equalsIgnoreCase(lang) ? "" : " Spawn Egg";
+                        lJson.addProperty("item." + ExampleMod.MODID + "." + creatureDef.id + "_spawn_egg", eggPrefix + cName + eggSuffix);
+                        lJson.addProperty("entity." + ExampleMod.MODID + "." + creatureDef.id, cName);
+                    }
+                }
+            }
+
             // 6. Generate Atlas sources so all fluid and block textures are guaranteed in blocks.png atlas
             Path atlasesDir = generatedPackDir.resolve("assets").resolve("minecraft").resolve("atlases");
             Files.createDirectories(atlasesDir);
@@ -709,6 +790,10 @@ public class ContentManager {
         return fluidDefinitions;
     }
 
+    public Map<String, com.example.examplemod.content.data.CreatureDefinition> getCreatureDefinitions() {
+        return creatureDefinitions;
+    }
+
     public Map<String, DynamicItem> getDynamicItems() {
         return dynamicItems;
     }
@@ -723,6 +808,14 @@ public class ContentManager {
 
     public Map<String, DynamicFluidHolder> getDynamicFluids() {
         return dynamicFluids;
+    }
+
+    public Map<String, net.minecraft.world.entity.EntityType<com.example.examplemod.content.creature.DynamicCreatureEntity>> getDynamicEntityTypes() {
+        return dynamicEntityTypes;
+    }
+
+    public Map<String, Item> getDynamicSpawnEggs() {
+        return dynamicSpawnEggs;
     }
 
     private void processTextureDirectory(Path sourceDir, Path targetDir) {

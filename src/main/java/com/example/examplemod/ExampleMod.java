@@ -79,32 +79,40 @@ public class ExampleMod {
                         output.accept(fluidHolder.getBucketItem());
                     }
                 }
+                // Add all spawn eggs
+                for (Item spawnEgg : ContentManager.getInstance().getDynamicSpawnEggs().values()) {
+                    output.accept(spawnEgg);
+                }
             }).build());
 
     public ExampleMod(IEventBus modEventBus, ModContainer modContainer) {
         LOGGER.info("[ExampleMod] Initializing Dynamic Content Mod...");
 
-        // 1. Initialize external content manager (loads items, blocks, fluids and generates resources)
+        // 1. Initialize external content manager (loads items, blocks, fluids, creatures and generates resources)
         ContentManager.getInstance().init();
 
-        // 2. Register dynamic items, blocks, and fluids on RegisterEvent
+        // 2. Register dynamic items, blocks, fluids, and entities on RegisterEvent
         modEventBus.addListener(this::registerContent);
 
-        // 3. Register creative mode tabs
+        // 3. Register creature attributes
+        modEventBus.addListener(this::registerEntityAttributes);
+
+        // 4. Register creative mode tabs
         CREATIVE_MODE_TABS.register(modEventBus);
 
-        // 4. Mod lifecycle listeners
+        // 5. Mod lifecycle listeners
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::addCreative);
         if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             modEventBus.addListener(ClientModEvents::onRegisterClientExtensions);
+            modEventBus.addListener(ClientModEvents::onRegisterEntityRenderers);
             modEventBus.addListener(ClientModEvents::onClientSetup);
         }
 
-        // 5. Game & Server event bus
+        // 6. Game & Server event bus
         NeoForge.EVENT_BUS.register(this);
 
-        // 6. Register mod config
+        // 7. Register mod config
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 
@@ -148,6 +156,18 @@ public class ExampleMod {
                 event.register(Registries.BLOCK, loc, fluidHolder::getBlock);
                 LOGGER.info("[ExampleMod] Registered dynamic fluid block: {}", loc);
             }
+        } else if (event.getRegistryKey().equals(Registries.ENTITY_TYPE)) {
+            // Register Dynamic Entity Types
+            for (com.example.examplemod.content.data.CreatureDefinition creatureDef : ContentManager.getInstance().getCreatureDefinitions().values()) {
+                net.minecraft.world.entity.EntityType<com.example.examplemod.content.creature.DynamicCreatureEntity> entityType = net.minecraft.world.entity.EntityType.Builder
+                        .<com.example.examplemod.content.creature.DynamicCreatureEntity>of((type, level) -> new com.example.examplemod.content.creature.DynamicCreatureEntity(type, level, creatureDef), net.minecraft.world.entity.MobCategory.MONSTER)
+                        .sized(0.6F, 1.95F)
+                        .build(creatureDef.id);
+                ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(MODID, creatureDef.id);
+                event.register(Registries.ENTITY_TYPE, loc, () -> entityType);
+                ContentManager.getInstance().getDynamicEntityTypes().put(creatureDef.id, entityType);
+                LOGGER.info("[ExampleMod] Registered dynamic entity type: {}", loc);
+            }
         } else if (event.getRegistryKey().equals(Registries.ITEM)) {
             // Register Dynamic Items
             for (ItemDefinition itemDef : ContentManager.getInstance().getItemDefinitions().values()) {
@@ -180,6 +200,42 @@ public class ExampleMod {
                     LOGGER.info("[ExampleMod] Registered dynamic fluid bucket item: {}", loc);
                 }
             }
+
+            // Register Spawn Eggs for Creatures
+            for (com.example.examplemod.content.data.CreatureDefinition creatureDef : ContentManager.getInstance().getCreatureDefinitions().values()) {
+                if (creatureDef.spawn_egg != null && creatureDef.spawn_egg.has_egg) {
+                    var entityTypeHolder = ContentManager.getInstance().getDynamicEntityTypes().get(creatureDef.id);
+                    if (entityTypeHolder != null) {
+                        int primary = parseHexColor(creatureDef.spawn_egg.primary_color, 0x000000);
+                        int secondary = parseHexColor(creatureDef.spawn_egg.secondary_color, 0xFFFFFF);
+                        Item spawnEgg = new net.neoforged.neoforge.common.DeferredSpawnEggItem(() -> entityTypeHolder, primary, secondary, new Item.Properties());
+                        ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(MODID, creatureDef.id + "_spawn_egg");
+                        event.register(Registries.ITEM, loc, () -> spawnEgg);
+                        ContentManager.getInstance().getDynamicSpawnEggs().put(creatureDef.id, spawnEgg);
+                        LOGGER.info("[ExampleMod] Registered dynamic spawn egg: {}", loc);
+                    }
+                }
+            }
+        }
+    }
+
+    private void registerEntityAttributes(net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent event) {
+        for (com.example.examplemod.content.data.CreatureDefinition creatureDef : ContentManager.getInstance().getCreatureDefinitions().values()) {
+            var entityType = ContentManager.getInstance().getDynamicEntityTypes().get(creatureDef.id);
+            if (entityType != null) {
+                event.put(entityType, com.example.examplemod.content.creature.DynamicCreatureEntity.createAttributes(creatureDef).build());
+                LOGGER.info("[ExampleMod] Registered entity attributes for creature: {}", creatureDef.id);
+            }
+        }
+    }
+
+    private static int parseHexColor(String hex, int defaultColor) {
+        if (hex == null || hex.isBlank()) return defaultColor;
+        try {
+            String clean = hex.startsWith("#") ? hex.substring(1) : hex;
+            return (int) Long.parseLong(clean, 16);
+        } catch (Exception e) {
+            return defaultColor;
         }
     }
 
@@ -201,6 +257,11 @@ public class ExampleMod {
                 if (fluidHolder.getBucketItem() != null) {
                     event.accept(fluidHolder.getBucketItem());
                 }
+            }
+        }
+        if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
+            for (Item spawnEgg : ContentManager.getInstance().getDynamicSpawnEggs().values()) {
+                event.accept(spawnEgg);
             }
         }
     }
@@ -236,6 +297,16 @@ public class ExampleMod {
                     }
                 }, type);
                 LOGGER.info("[ExampleMod] Registered client fluid extensions for: {}", holder.getDefinition().id);
+            }
+        }
+
+        public static void onRegisterEntityRenderers(net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+            for (com.example.examplemod.content.data.CreatureDefinition creatureDef : ContentManager.getInstance().getCreatureDefinitions().values()) {
+                var entityType = ContentManager.getInstance().getDynamicEntityTypes().get(creatureDef.id);
+                if (entityType != null) {
+                    event.registerEntityRenderer(entityType, ctx -> new com.example.examplemod.content.creature.DynamicCreatureRenderer(ctx, creatureDef));
+                    LOGGER.info("[ExampleMod] Registered client renderer for creature: {}", creatureDef.id);
+                }
             }
         }
 
