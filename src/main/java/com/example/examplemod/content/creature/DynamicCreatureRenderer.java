@@ -86,7 +86,6 @@ public class DynamicCreatureRenderer extends MobRenderer<DynamicCreatureEntity, 
 
         @Override
         public void translateToHand(HumanoidArm arm, PoseStack poseStack) {
-            this.root.translateAndRotate(poseStack);
             if (arm == HumanoidArm.RIGHT) {
                 this.rightArm.translateAndRotate(poseStack);
             } else {
