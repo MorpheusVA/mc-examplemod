@@ -229,6 +229,7 @@ public class DynamicCreatureEntity extends Monster {
         @Override
         public void stop() {
             super.stop();
+            System.out.println("[AI] Goal stopped! aimTimer was " + this.aimTimer);
             this.mob.setAggressive(false);
             this.mob.setChargingCrossbow(false);
             this.aimTimer = 0;
@@ -265,7 +266,11 @@ public class DynamicCreatureEntity extends Monster {
                 if (attackTime <= 0) {
                     mob.setChargingCrossbow(true);
                     aimTimer++;
+                    if (aimTimer % 10 == 0 || aimTimer == 1) {
+                        System.out.println("[AI] Aiming: " + aimTimer + " / " + Math.max(1, config.aim_ticks));
+                    }
                     if (aimTimer >= Math.max(1, config.aim_ticks)) {
+                        System.out.println("[AI] Shooting projectile!");
                         shootProjectile(target);
                         mob.setChargingCrossbow(false);
                         aimTimer = 0;
@@ -305,8 +310,6 @@ public class DynamicCreatureEntity extends Monster {
             double d2 = target.getZ() - spawnZ;
             double d3 = Math.sqrt(d0 * d0 + d2 * d2);
 
-            ItemStack weaponStack = mob.getItemBySlot(EquipmentSlot.MAINHAND);
-
             if ("minecraft:firework_rocket".equals(projId)) {
                 ItemStack fireworkStack = new ItemStack(Items.FIREWORK_ROCKET);
                 FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, spawnX, spawnY, spawnZ, true);
@@ -314,14 +317,14 @@ public class DynamicCreatureEntity extends Monster {
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(firework);
             } else if ("minecraft:spectral_arrow".equals(projId)) {
-                SpectralArrow arrow = new SpectralArrow(level, mob, new ItemStack(Items.SPECTRAL_ARROW), weaponStack);
+                SpectralArrow arrow = new SpectralArrow(level, mob, new ItemStack(Items.SPECTRAL_ARROW), null);
                 arrow.setPos(spawnX, spawnY, spawnZ);
                 arrow.setBaseDamage(baseDmg);
                 arrow.shoot(d0, d1 + d3 * 0.05D, d2, speed, inaccuracy);
                 level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
             } else {
-                Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), weaponStack);
+                Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), null);
                 arrow.setPos(spawnX, spawnY, spawnZ);
                 arrow.setBaseDamage(baseDmg);
                 arrow.shoot(d0, d1 + d3 * 0.05D, d2, speed, inaccuracy);
