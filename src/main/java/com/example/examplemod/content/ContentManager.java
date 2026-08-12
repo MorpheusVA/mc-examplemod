@@ -300,7 +300,7 @@ public class ContentManager {
                 pillagerDef.attributes.follow_range = 32.0;
 
                 pillagerDef.ranged_attack.enabled = true;
-                pillagerDef.ranged_attack.weapon = "minecraft:crossbow";
+                pillagerDef.ranged_attack.weapon = "examplemod:example_crossbow";
                 pillagerDef.ranged_attack.projectile = "minecraft:arrow";
                 pillagerDef.ranged_attack.aim_ticks = 30;
                 pillagerDef.ranged_attack.reload_time_ticks = 40;
@@ -309,7 +309,11 @@ public class ContentManager {
                 pillagerDef.ranged_attack.reload_sound = "minecraft:item.crossbow.loading_start";
                 pillagerDef.ranged_attack.shoot_sound = "minecraft:item.crossbow.shoot";
 
-                pillagerDef.equipment.mainhand = "minecraft:crossbow";
+                pillagerDef.equipment.mainhand = "examplemod:example_crossbow";
+
+                pillagerDef.sounds.ambient = "minecraft:entity.pillager.ambient";
+                pillagerDef.sounds.hurt = "minecraft:entity.pillager.hurt";
+                pillagerDef.sounds.death = "minecraft:entity.pillager.death";
 
                 pillagerDef.spawn_egg.has_egg = true;
                 pillagerDef.spawn_egg.primary_color = "#4A4A4A";

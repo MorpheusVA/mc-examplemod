@@ -210,6 +210,84 @@ public class DynamicCreatureEntity extends Monster {
         } catch (Exception ignored) {}
     }
 
+    @Override
+    protected SoundEvent getAmbientSound() {
+        if (definition != null && definition.sounds != null && definition.sounds.ambient != null && !definition.sounds.ambient.isBlank()) {
+            SoundEvent sound = getSoundFromString(definition.sounds.ambient);
+            if (sound != null) return sound;
+        }
+        return getDefaultAmbientSound();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(net.minecraft.world.damagesource.DamageSource damageSource) {
+        if (definition != null && definition.sounds != null && definition.sounds.hurt != null && !definition.sounds.hurt.isBlank()) {
+            SoundEvent sound = getSoundFromString(definition.sounds.hurt);
+            if (sound != null) return sound;
+        }
+        return getDefaultHurtSound();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        if (definition != null && definition.sounds != null && definition.sounds.death != null && !definition.sounds.death.isBlank()) {
+            SoundEvent sound = getSoundFromString(definition.sounds.death);
+            if (sound != null) return sound;
+        }
+        return getDefaultDeathSound();
+    }
+
+    private SoundEvent getSoundFromString(String soundId) {
+        try {
+            ResourceLocation loc = ResourceLocation.parse(soundId);
+            return BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private SoundEvent getDefaultAmbientSound() {
+        String base = definition != null && definition.base_entity != null ? definition.base_entity.toLowerCase() : "zombie";
+        return switch (base) {
+            case "pillager", "illager" -> SoundEvents.PILLAGER_AMBIENT;
+            case "skeleton" -> SoundEvents.SKELETON_AMBIENT;
+            case "spider" -> SoundEvents.SPIDER_AMBIENT;
+            case "cow" -> SoundEvents.COW_AMBIENT;
+            case "pig" -> SoundEvents.PIG_AMBIENT;
+            case "iron_golem" -> null;
+            case "creeper" -> null;
+            default -> SoundEvents.ZOMBIE_AMBIENT;
+        };
+    }
+
+    private SoundEvent getDefaultHurtSound() {
+        String base = definition != null && definition.base_entity != null ? definition.base_entity.toLowerCase() : "zombie";
+        return switch (base) {
+            case "pillager", "illager" -> SoundEvents.PILLAGER_HURT;
+            case "skeleton" -> SoundEvents.SKELETON_HURT;
+            case "spider" -> SoundEvents.SPIDER_HURT;
+            case "cow" -> SoundEvents.COW_HURT;
+            case "pig" -> SoundEvents.PIG_HURT;
+            case "iron_golem" -> SoundEvents.IRON_GOLEM_HURT;
+            case "creeper" -> SoundEvents.CREEPER_HURT;
+            default -> SoundEvents.ZOMBIE_HURT;
+        };
+    }
+
+    private SoundEvent getDefaultDeathSound() {
+        String base = definition != null && definition.base_entity != null ? definition.base_entity.toLowerCase() : "zombie";
+        return switch (base) {
+            case "pillager", "illager" -> SoundEvents.PILLAGER_DEATH;
+            case "skeleton" -> SoundEvents.SKELETON_DEATH;
+            case "spider" -> SoundEvents.SPIDER_DEATH;
+            case "cow" -> SoundEvents.COW_DEATH;
+            case "pig" -> SoundEvents.PIG_DEATH;
+            case "iron_golem" -> SoundEvents.IRON_GOLEM_DEATH;
+            case "creeper" -> SoundEvents.CREEPER_DEATH;
+            default -> SoundEvents.ZOMBIE_DEATH;
+        };
+    }
+
     public static class DynamicRangedAttackGoal extends Goal {
         private final DynamicCreatureEntity mob;
         private final CreatureDefinition.RangedAttack config;

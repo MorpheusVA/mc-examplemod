@@ -10,6 +10,7 @@ public class CreatureDefinition {
     public RangedAttack ranged_attack = new RangedAttack();
     public Equipment equipment = new Equipment();
     public SpawnEgg spawn_egg = new SpawnEgg();
+    public Sounds sounds = new Sounds();
 
     public static class RangedAttack {
         public boolean enabled = false;
@@ -49,5 +50,11 @@ public class CreatureDefinition {
         public String primary_color = "#8B0000";
         public String secondary_color = "#FF4500";
         public String creative_tab = "example_tab";
+    }
+
+    public static class Sounds {
+        public String ambient;
+        public String hurt;
+        public String death;
     }
 }
