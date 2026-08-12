@@ -306,6 +306,8 @@ public class ContentManager {
                 pillagerDef.ranged_attack.reload_time_ticks = 40;
                 pillagerDef.ranged_attack.can_shoot_while_walking = true;
                 pillagerDef.ranged_attack.attack_radius = 20.0f;
+                pillagerDef.ranged_attack.reload_sound = "minecraft:item.crossbow.loading_start";
+                pillagerDef.ranged_attack.shoot_sound = "minecraft:item.crossbow.shoot";
 
                 pillagerDef.equipment.mainhand = "minecraft:crossbow";
 

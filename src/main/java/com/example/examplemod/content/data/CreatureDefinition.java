@@ -21,6 +21,8 @@ public class CreatureDefinition {
         public float attack_radius = 16.0f;
         public float projectile_speed = 1.6f;
         public float projectile_inaccuracy = 1.0f;
+        public String reload_sound = "minecraft:item.crossbow.loading_start";
+        public String shoot_sound = "minecraft:item.crossbow.shoot";
     }
 
     public static class Attributes {

@@ -7,6 +7,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.DifficultyInstance;
@@ -271,6 +272,18 @@ public class DynamicCreatureEntity extends Monster {
                 if (attackTime <= 0) {
                     mob.setChargingCrossbow(true);
                     aimTimer++;
+                    if (aimTimer == 1) {
+                        SoundEvent reloadSound = null;
+                        if (config.reload_sound != null && !config.reload_sound.isBlank()) {
+                            try {
+                                ResourceLocation loc = ResourceLocation.parse(config.reload_sound);
+                                reloadSound = BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(null);
+                            } catch (Exception ignored) {}
+                        }
+                        if (reloadSound != null) {
+                            mob.level().playSound(null, mob.getX(), mob.getY(), mob.getZ(), reloadSound, SoundSource.HOSTILE, 1.0F, 1.0F);
+                        }
+                    }
                     if (aimTimer % 10 == 0 || aimTimer == 1) {
                         System.out.println("[AI] Aiming: " + aimTimer + " / " + Math.max(1, config.aim_ticks));
                     }
@@ -315,25 +328,33 @@ public class DynamicCreatureEntity extends Monster {
             double d2 = target.getZ() - spawnZ;
             double d3 = Math.sqrt(d0 * d0 + d2 * d2);
 
+            SoundEvent shootSound = SoundEvents.CROSSBOW_SHOOT;
+            if (config.shoot_sound != null && !config.shoot_sound.isBlank()) {
+                try {
+                    ResourceLocation loc = ResourceLocation.parse(config.shoot_sound);
+                    shootSound = BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(SoundEvents.CROSSBOW_SHOOT);
+                } catch (Exception ignored) {}
+            }
+
             if ("minecraft:firework_rocket".equals(projId)) {
                 ItemStack fireworkStack = new ItemStack(Items.FIREWORK_ROCKET);
                 FireworkRocketEntity firework = new FireworkRocketEntity(level, fireworkStack, mob, spawnX, spawnY, spawnZ, true);
                 firework.shoot(d0, d1 + d3 * 0.05D, d2, speed, inaccuracy);
-                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
+                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), shootSound, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(firework);
             } else if ("minecraft:spectral_arrow".equals(projId)) {
                 SpectralArrow arrow = new SpectralArrow(level, mob, new ItemStack(Items.SPECTRAL_ARROW), null);
                 arrow.setPos(spawnX, spawnY, spawnZ);
                 arrow.setBaseDamage(baseDmg);
                 arrow.shoot(d0, d1 + d3 * 0.05D, d2, speed, inaccuracy);
-                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
+                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), shootSound, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
             } else {
                 Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), null);
                 arrow.setPos(spawnX, spawnY, spawnZ);
                 arrow.setBaseDamage(baseDmg);
                 arrow.shoot(d0, d1 + d3 * 0.05D, d2, speed, inaccuracy);
-                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.0F, 1.0F);
+                level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), shootSound, SoundSource.HOSTILE, 1.0F, 1.0F);
                 level.addFreshEntity(arrow);
             }
         }
