@@ -54,7 +54,7 @@ public class ContentManager {
     private final Map<String, FluidDefinition> fluidDefinitions = new LinkedHashMap<>();
     private final Map<String, com.example.examplemod.content.data.CreatureDefinition> creatureDefinitions = new LinkedHashMap<>();
 
-    private final Map<String, DynamicItem> dynamicItems = new LinkedHashMap<>();
+    private final Map<String, Item> dynamicItems = new LinkedHashMap<>();
     private final Map<String, DynamicBlock> dynamicBlocks = new LinkedHashMap<>();
     private final Map<String, BlockItem> dynamicBlockItems = new LinkedHashMap<>();
     private final Map<String, DynamicFluidHolder> dynamicFluids = new LinkedHashMap<>();
@@ -450,10 +450,14 @@ public class ContentManager {
             // 2. Generate item models and lang
             for (ItemDefinition itemDef : itemDefinitions.values()) {
                 JsonObject itemModel = new JsonObject();
-                itemModel.addProperty("parent", "item/generated");
-                JsonObject textures = new JsonObject();
-                textures.addProperty("layer0", ExampleMod.MODID + ":item/" + itemDef.id);
-                itemModel.add("textures", textures);
+                if ("crossbow".equalsIgnoreCase(itemDef.type)) {
+                    itemModel.addProperty("parent", "minecraft:item/crossbow");
+                } else {
+                    itemModel.addProperty("parent", "item/generated");
+                    JsonObject textures = new JsonObject();
+                    textures.addProperty("layer0", ExampleMod.MODID + ":item/" + itemDef.id);
+                    itemModel.add("textures", textures);
+                }
 
                 Files.writeString(modelsItemDir.resolve(itemDef.id + ".json"), GSON.toJson(itemModel), StandardCharsets.UTF_8);
 
@@ -838,7 +842,7 @@ public class ContentManager {
         return creatureDefinitions;
     }
 
-    public Map<String, DynamicItem> getDynamicItems() {
+    public Map<String, Item> getDynamicItems() {
         return dynamicItems;
     }
 

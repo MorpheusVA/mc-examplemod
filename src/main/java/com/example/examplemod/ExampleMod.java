@@ -8,6 +8,8 @@ import com.example.examplemod.content.DynamicDirectionalBlock;
 import com.example.examplemod.content.DynamicHorizontalBlock;
 import com.example.examplemod.content.DynamicInvertibleBlock;
 import com.example.examplemod.content.DynamicItem;
+import com.example.examplemod.content.DynamicCrossbowItem;
+import com.example.examplemod.content.IDynamicItem;
 import com.example.examplemod.content.DynamicPillarBlock;
 import com.example.examplemod.content.data.BlockDefinition;
 import com.example.examplemod.content.data.ItemDefinition;
@@ -70,7 +72,7 @@ public class ExampleMod {
                     output.accept(blockItem);
                 }
                 // Add all loaded items
-                for (DynamicItem item : ContentManager.getInstance().getDynamicItems().values()) {
+                for (Item item : ContentManager.getInstance().getDynamicItems().values()) {
                     output.accept(item);
                 }
                 // Add all fluid buckets
@@ -171,7 +173,12 @@ public class ExampleMod {
         } else if (event.getRegistryKey().equals(Registries.ITEM)) {
             // Register Dynamic Items
             for (ItemDefinition itemDef : ContentManager.getInstance().getItemDefinitions().values()) {
-                DynamicItem item = new DynamicItem(itemDef);
+                Item item;
+                if ("crossbow".equalsIgnoreCase(itemDef.type)) {
+                    item = new DynamicCrossbowItem(itemDef);
+                } else {
+                    item = new DynamicItem(itemDef);
+                }
                 ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(MODID, itemDef.id);
                 event.register(Registries.ITEM, loc, () -> item);
                 ContentManager.getInstance().getDynamicItems().put(itemDef.id, item);

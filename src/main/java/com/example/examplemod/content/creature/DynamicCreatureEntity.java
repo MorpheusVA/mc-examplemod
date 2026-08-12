@@ -1,6 +1,8 @@
 package com.example.examplemod.content.creature;
 
 import com.example.examplemod.content.data.CreatureDefinition;
+import com.example.examplemod.content.data.ItemDefinition;
+import com.example.examplemod.content.DynamicCrossbowItem;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -274,7 +276,17 @@ public class DynamicCreatureEntity extends Monster {
                     aimTimer++;
                     if (aimTimer == 1) {
                         SoundEvent reloadSound = null;
-                        if (config.reload_sound != null && !config.reload_sound.isBlank()) {
+                        ItemStack mainHandItem = mob.getItemBySlot(EquipmentSlot.MAINHAND);
+                        if (mainHandItem.getItem() instanceof DynamicCrossbowItem dynamicCrossbow) {
+                            ItemDefinition itemDef = dynamicCrossbow.getDefinition();
+                            if (itemDef.crossbow != null && itemDef.crossbow.reload_sound != null && !itemDef.crossbow.reload_sound.isBlank()) {
+                                try {
+                                    ResourceLocation loc = ResourceLocation.parse(itemDef.crossbow.reload_sound);
+                                    reloadSound = BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(null);
+                                } catch (Exception ignored) {}
+                            }
+                        }
+                        if (reloadSound == null && config.reload_sound != null && !config.reload_sound.isBlank()) {
                             try {
                                 ResourceLocation loc = ResourceLocation.parse(config.reload_sound);
                                 reloadSound = BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(null);
@@ -329,7 +341,16 @@ public class DynamicCreatureEntity extends Monster {
             double d3 = Math.sqrt(d0 * d0 + d2 * d2);
 
             SoundEvent shootSound = SoundEvents.CROSSBOW_SHOOT;
-            if (config.shoot_sound != null && !config.shoot_sound.isBlank()) {
+            ItemStack mainHandItem = mob.getItemBySlot(EquipmentSlot.MAINHAND);
+            if (mainHandItem.getItem() instanceof DynamicCrossbowItem dynamicCrossbow) {
+                ItemDefinition itemDef = dynamicCrossbow.getDefinition();
+                if (itemDef.crossbow != null && itemDef.crossbow.shoot_sound != null && !itemDef.crossbow.shoot_sound.isBlank()) {
+                    try {
+                        ResourceLocation loc = ResourceLocation.parse(itemDef.crossbow.shoot_sound);
+                        shootSound = BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(SoundEvents.CROSSBOW_SHOOT);
+                    } catch (Exception ignored) {}
+                }
+            } else if (config.shoot_sound != null && !config.shoot_sound.isBlank()) {
                 try {
                     ResourceLocation loc = ResourceLocation.parse(config.shoot_sound);
                     shootSound = BuiltInRegistries.SOUND_EVENT.getOptional(loc).orElse(SoundEvents.CROSSBOW_SHOOT);

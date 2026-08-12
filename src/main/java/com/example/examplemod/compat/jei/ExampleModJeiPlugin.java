@@ -3,7 +3,8 @@ package com.example.examplemod.compat.jei;
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.content.ContentManager;
 import com.example.examplemod.content.DynamicBlock;
-import com.example.examplemod.content.DynamicItem;
+import com.example.examplemod.content.IDynamicItem;
+import net.minecraft.world.item.Item;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -23,9 +24,11 @@ public class ExampleModJeiPlugin implements IModPlugin {
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         // Register informative descriptions in JEI for all dynamic items
-        for (DynamicItem item : ContentManager.getInstance().getDynamicItems().values()) {
-            if (item.getDefinition().description != null && !item.getDefinition().description.isBlank()) {
-                registration.addIngredientInfo(item, Component.translatable("jei.examplemod." + item.getDefinition().id + ".description"));
+        for (Item item : ContentManager.getInstance().getDynamicItems().values()) {
+            if (item instanceof IDynamicItem dynamicItem) {
+                if (dynamicItem.getDefinition().description != null && !dynamicItem.getDefinition().description.isBlank()) {
+                    registration.addIngredientInfo(item, Component.translatable("jei.examplemod." + dynamicItem.getDefinition().id + ".description"));
+                }
             }
         }
 
